@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # Main workstation - where you'll develop and run your ML code
+  workstation:
+    image: ubuntu:24.04
+    container_name: workstation
+    hostname: workstation.lab
+    networks:
+      - lab_network
+    volumes:
+      - ./data:/data
+      - ./scripts:/scripts
+    working_dir: /data
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: >
+      bash -c "
+        apt-get update -qq &&
+        apt-get install -y -qq python3 python3-pip git curl wget vim net-tools iputils-ping &&
+        pip3 install --break-system-packages pandas numpy scikit-learn tensorflow keras matplotlib seaborn faker requests &&
+        echo '=== Workstation ready ===' &&
+        echo 'Available containers:' &&
+        echo '- target.lab (or just target)' &&
+        echo '- monitor.lab (or just monitor)' &&
+        echo 'Shared data directory: /data' &&
+        echo 'Scripts directory: /scripts' &&
+        tail -f /dev/null
+      "
+    depends_on:
+      - target
+      - monitor
+
+  # Target system - generates normal user activity
+  target:
+    image: ubuntu:24.04
+    container_name: target
+    hostname: target.lab
+    networks:
+      - lab_network
+    volumes:
+      - activity_logs:/var/log/activity
+      - ./scripts:/scripts
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: >
+      bash -c "
+        apt-get update -qq &&
+        apt-get install -y -qq python3 python3-pip net-tools &&
+        pip3 install faker &&
+        echo '=== Target system ready ===' &&
+        python3 /scripts/generate_activity.py &
+        tail -f /dev/null
+      "
+
+  # Monitor - collects and processes activity logs  
+  monitor:
+    image: ubuntu:24.04
+    container_name: monitor
+    hostname: monitor.lab
+    networks:
+      - lab_network
+    volumes:
+      - activity_logs:/var/log/activity:ro
+      - ./data:/data
+      - ./scripts:/scripts
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: >
+      bash -c "
+        apt-get update -qq &&
+        apt-get install -y -qq python3 python3-pip net-tools &&
+        pip3 install pandas numpy &&
+        echo '=== Monitor ready ===' &&
+        sleep 10 &&
+        python3 /scripts/process_logs.py &
+        tail -f /dev/null
+      "
+
+volumes:
+  activity_logs:
+
+networks:
+  lab_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
