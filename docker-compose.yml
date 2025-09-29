@@ -25,6 +25,11 @@ services:
         echo '- monitor.lab (or just monitor)' &&
         echo 'Shared data directory: /data' &&
         echo 'Scripts directory: /scripts' &&
+        echo '' &&
+        echo 'Anomaly Detection Commands:' &&
+        echo '1. Train model: python3 /scripts/docker_anomaly_detector.py --mode train' &&
+        echo '2. Monitor mode: python3 /scripts/docker_anomaly_detector.py --mode monitor' &&
+        echo '3. View outputs: ls -la /data/output/' &&
         tail -f /dev/null
       "
     depends_on:
@@ -47,7 +52,7 @@ services:
       bash -c "
         apt-get update -qq &&
         apt-get install -y -qq python3 python3-pip net-tools &&
-        pip3 install faker &&
+        pip3 install --break-system-packages faker &&
         echo '=== Target system ready ===' &&
         python3 /scripts/generate_activity.py &
         tail -f /dev/null
@@ -70,7 +75,7 @@ services:
       bash -c "
         apt-get update -qq &&
         apt-get install -y -qq python3 python3-pip net-tools &&
-        pip3 install pandas numpy &&
+        pip3 install --break-system-packages pandas numpy &&
         echo '=== Monitor ready ===' &&
         sleep 10 &&
         python3 /scripts/process_logs.py &
