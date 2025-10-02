@@ -88,9 +88,9 @@ class LogProcessor:
                     total_alerts += len(alerts)
 
                     for alert in alerts:
-                        # Track alert types if available
-                        if 'type' in alert:
-                            alert_types[alert['type']] = alert_types.get(alert['type'], 0) + 1
+                        # Track alert types if available (check both 'type' and 'anomaly_type')
+                        anomaly_type = alert.get('anomaly_type', alert.get('type', 'Unknown'))
+                        alert_types[anomaly_type] = alert_types.get(anomaly_type, 0) + 1
 
                         # Keep track of recent alerts
                         if len(latest_alerts) < 10:
@@ -171,30 +171,58 @@ class LogProcessor:
             if not data:
                 return
 
-            # Count protocols
+            # Count protocols, services, and attack categories
             protocols = {}
             services = {}
+            attack_categories = {}
             anomalies = 0
+            normal_traffic = 0
 
             for row in data:
                 proto = row.get('proto', 'unknown')
                 service = row.get('service', 'unknown')
                 label = int(row.get('label', 0))
+                attack_cat = row.get('attack_cat', 'Normal')
 
                 protocols[proto] = protocols.get(proto, 0) + 1
                 services[service] = services.get(service, 0) + 1
 
                 if label == 1:
                     anomalies += 1
+                    attack_categories[attack_cat] = attack_categories.get(attack_cat, 0) + 1
+                else:
+                    normal_traffic += 1
+
+            # Count high-confidence alerts from alert files
+            alerts_dir = os.path.join(self.output_dir, 'alerts')
+            high_confidence_alerts = 0
+            if os.path.exists(alerts_dir):
+                for alert_file in os.listdir(alerts_dir):
+                    if alert_file.endswith('.json'):
+                        try:
+                            with open(os.path.join(alerts_dir, alert_file), 'r') as f:
+                                alerts = json.load(f)
+                                high_confidence_alerts += len(alerts)
+                        except:
+                            pass
 
             # Generate analysis report
             analysis = {
                 'timestamp': datetime.now().isoformat(),
                 'total_flows': len(data),
+                'normal_traffic': normal_traffic,
+                'anomalies_in_data': anomalies,
                 'anomaly_rate': (anomalies / len(data)) * 100 if data else 0,
+                'high_confidence_alerts': high_confidence_alerts,
+                'alert_rate': (high_confidence_alerts / len(data)) * 100 if data else 0,
                 'top_protocols': dict(sorted(protocols.items(), key=lambda x: x[1], reverse=True)[:5]),
                 'top_services': dict(sorted(services.items(), key=lambda x: x[1], reverse=True)[:5]),
-                'anomalies_detected': anomalies
+                'attack_categories': dict(sorted(attack_categories.items(), key=lambda x: x[1], reverse=True)),
+                'detection_effectiveness': {
+                    'total_anomalies': anomalies,
+                    'alerted_anomalies': high_confidence_alerts,
+                    'alert_ratio': f"{(high_confidence_alerts / anomalies * 100) if anomalies > 0 else 0:.1f}%"
+                }
             }
 
             analysis_path = os.path.join(self.output_dir, 'reports', f'traffic_analysis_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json')
@@ -202,7 +230,11 @@ class LogProcessor:
                 json.dump(analysis, f, indent=2)
 
             print(f"Traffic analysis completed: {analysis_path}")
-            print(f"Anomaly rate: {analysis['anomaly_rate']:.2f}%")
+            print(f"Total flows: {analysis['total_flows']}")
+            print(f"Normal traffic: {analysis['normal_traffic']} ({100 - analysis['anomaly_rate']:.1f}%)")
+            print(f"Anomalies in data: {analysis['anomalies_in_data']} ({analysis['anomaly_rate']:.1f}%)")
+            print(f"High-confidence alerts: {analysis['high_confidence_alerts']} ({analysis['alert_rate']:.1f}%)")
+            print(f"Detection effectiveness: {analysis['detection_effectiveness']['alert_ratio']}")
 
         except Exception as e:
             print(f"Error in traffic analysis: {e}")

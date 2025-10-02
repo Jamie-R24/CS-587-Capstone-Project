@@ -11,14 +11,18 @@ services:
     volumes:
       - ./data:/data
       - ./scripts:/scripts
+      - ./training_data:/data/training_data
     working_dir: /data
     environment:
       - PYTHONUNBUFFERED=1
     command: >
       bash -c "
+        echo 'Installing dependencies...' &&
         apt-get update -qq &&
         apt-get install -y -qq python3 python3-pip git curl wget vim net-tools iputils-ping &&
+        echo 'Installing Python packages...' &&
         pip3 install --break-system-packages pandas numpy scikit-learn tensorflow keras matplotlib seaborn faker requests &&
+        touch /tmp/workstation_ready &&
         echo '=== Workstation ready ===' &&
         echo 'Available containers:' &&
         echo '- target.lab (or just target)' &&
@@ -32,6 +36,12 @@ services:
         echo '3. View outputs: ls -la /data/output/' &&
         tail -f /dev/null
       "
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/workstation_ready && python3 --version || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 120s
     depends_on:
       - target
       - monitor

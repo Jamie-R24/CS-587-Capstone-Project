@@ -203,11 +203,11 @@ except:
     echo ""
 
     echo -e "${BLUE}======================================================${NC}"
-    echo -e "Refreshing in 5 seconds... (Ctrl+C to exit)"
+    echo -e "Refreshing in 15 seconds... (Ctrl+C to exit)"
 }
 
 # Main monitoring loop
 while true; do
     display_status
-    sleep 5
+    sleep 15
 done

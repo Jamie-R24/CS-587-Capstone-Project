@@ -207,7 +207,7 @@ class NetworkActivityGenerator:
 
 def main():
     generator = NetworkActivityGenerator()
-    generator.run_continuous(interval=3)
+    generator.run_continuous(interval=10)
 
 if __name__ == "__main__":
     main()

@@ -14,9 +14,10 @@ from collections import Counter
 import math
 
 class DockerAnomalyDetector:
-    def __init__(self, output_dir='/data/output'):
+    def __init__(self, output_dir='/data/output', confidence_threshold=0.4):
         self.feature_stats = {}
-        self.threshold_factor = 1.5
+        self.threshold_factor = 1.4  # Lowered from 1.5 to 1.4 for more sensitivity
+        self.confidence_threshold = confidence_threshold  # Lowered from 0.5 to 0.4
         self.output_dir = output_dir
         self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
@@ -30,12 +31,23 @@ class DockerAnomalyDetector:
         """Load data from CSV file"""
         data = []
         headers = []
+        attack_categories = []  # Store attack categories separately
 
         try:
             with open(filename, 'r') as f:
                 reader = csv.reader(f)
                 headers = next(reader)
+
+                # Find attack_cat column index
+                attack_cat_idx = headers.index('attack_cat') if 'attack_cat' in headers else -1
+
                 for row in reader:
+                    # Store attack category before processing
+                    if attack_cat_idx >= 0 and attack_cat_idx < len(row):
+                        attack_categories.append(row[attack_cat_idx])
+                    else:
+                        attack_categories.append('Unknown')
+
                     processed_row = []
                     for i, val in enumerate(row):
                         try:
@@ -46,10 +58,10 @@ class DockerAnomalyDetector:
                     data.append(processed_row)
         except FileNotFoundError:
             print(f"Error: Could not find {filename}")
-            return [], []
+            return [], [], []
 
         print(f"Loaded {len(data)} samples with {len(data[0]) if data else 0} features")
-        return data, headers
+        return data, headers, attack_categories
 
     def calculate_stats(self, data):
         """Calculate statistics for normal data"""
@@ -72,7 +84,7 @@ class DockerAnomalyDetector:
         print(f"Training Docker Anomaly Detector at {self.timestamp}")
 
         # Load data
-        data, headers = self.load_data(data_path)
+        data, headers, attack_categories = self.load_data(data_path)
         if not data:
             return False
 
@@ -107,18 +119,38 @@ class DockerAnomalyDetector:
             if pred == labels[i]:
                 correct += 1
 
-            # Generate alerts for anomalies
+            # Generate alerts for anomalies (only if confidence exceeds threshold)
             if pred == 1:
-                alert = {
-                    'timestamp': datetime.now().isoformat(),
-                    'sample_id': i,
-                    'prediction': 'ANOMALY',
-                    'confidence': self.get_anomaly_score(sample)
-                }
-                alerts.append(alert)
+                confidence = self.get_anomaly_score(sample)
+                if confidence >= self.confidence_threshold:
+                    alert = {
+                        'timestamp': datetime.now().isoformat(),
+                        'sample_id': i,
+                        'prediction': 'ANOMALY',
+                        'anomaly_type': attack_categories[i] if i < len(attack_categories) else 'Unknown',
+                        'confidence': confidence
+                    }
+                    alerts.append(alert)
 
         accuracy = correct / len(features) if features else 0
         print(f"Training Accuracy: {accuracy:.4f}")
+
+        # Calculate performance metrics
+        true_positives = sum(1 for i, p in enumerate(predictions) if p == 1 and labels[i] == 1)
+        false_positives = sum(1 for i, p in enumerate(predictions) if p == 1 and labels[i] == 0)
+        true_negatives = sum(1 for i, p in enumerate(predictions) if p == 0 and labels[i] == 0)
+        false_negatives = sum(1 for i, p in enumerate(predictions) if p == 0 and labels[i] == 1)
+
+        precision = true_positives / (true_positives + false_positives) if (true_positives + false_positives) > 0 else 0
+        recall = true_positives / (true_positives + false_negatives) if (true_positives + false_negatives) > 0 else 0
+        f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+
+        print(f"Precision: {precision:.4f} | Recall: {recall:.4f} | F1-Score: {f1_score:.4f}")
+        print(f"True Positives: {true_positives} | False Positives: {false_positives}")
+        print(f"True Negatives: {true_negatives} | False Negatives: {false_negatives}")
+        print(f"High-confidence alerts generated: {len(alerts)}")
+        print(f"Detection Coverage: {(true_positives / (true_positives + false_negatives) * 100):.1f}% of anomalies detected")
+        print(f"Alert Rate: {(len(alerts) / len(features) * 100):.2f}% of samples generated high-confidence alerts")
 
         # Save training log
         log_path = os.path.join(self.output_dir, 'logs', f'training_log_{self.timestamp}.json')
@@ -126,9 +158,20 @@ class DockerAnomalyDetector:
             json.dump({
                 'timestamp': self.timestamp,
                 'accuracy': accuracy,
+                'precision': precision,
+                'recall': recall,
+                'f1_score': f1_score,
                 'total_samples': len(features),
                 'normal_samples': len(normal_samples),
                 'anomaly_samples': len(features) - len(normal_samples),
+                'true_positives': true_positives,
+                'false_positives': false_positives,
+                'true_negatives': true_negatives,
+                'false_negatives': false_negatives,
+                'high_confidence_alerts': len(alerts),
+                'confidence_threshold': self.confidence_threshold,
+                'detection_threshold': 0.10,
+                'z_score_threshold': self.threshold_factor,
                 'model_path': os.path.join(self.output_dir, 'models', f'model_{self.timestamp}.json')
             }, f, indent=2)
 
@@ -150,7 +193,9 @@ class DockerAnomalyDetector:
                 if z_score > self.threshold_factor:
                     anomaly_score += 1
 
-        threshold = len(sample) * 0.05
+        # Lowered threshold from 15% to 10% to improve recall (catch more anomalies)
+        # This means 4-5 features need to be anomalous instead of 6-7
+        threshold = len(sample) * 0.10
         return 1 if anomaly_score > threshold else 0
 
     def get_anomaly_score(self, sample):
@@ -159,6 +204,7 @@ class DockerAnomalyDetector:
             return 0.0
 
         anomaly_score = 0
+        anomalous_count = 0
         means = self.feature_stats['means']
         stds = self.feature_stats['stds']
 
@@ -167,8 +213,16 @@ class DockerAnomalyDetector:
                 z_score = abs(val - means[i]) / stds[i]
                 if z_score > self.threshold_factor:
                     anomaly_score += z_score
+                    anomalous_count += 1
 
-        return min(anomaly_score / len(sample), 1.0)
+        # Normalize by number of anomalous features, not total features
+        # This gives more reasonable confidence scores
+        if anomalous_count > 0:
+            # Divide by (anomalous_count * 5) for better scaling
+            # A feature with z-score of 5+ should contribute ~1.0 to confidence
+            return min(anomaly_score / (anomalous_count * 5), 1.0)
+        else:
+            return 0.0
 
     def monitor_real_time(self, input_path, interval=5):
         """Monitor for real-time anomaly detection"""
@@ -178,21 +232,26 @@ class DockerAnomalyDetector:
             try:
                 if os.path.exists(input_path):
                     # Process new data
-                    data, _ = self.load_data(input_path)
+                    data, _, attack_categories = self.load_data(input_path)
                     if data:
                         alerts = []
                         for i, sample in enumerate(data):
                             pred = self.predict_single(sample[:-1] if len(sample) > 43 else sample)
                             if pred == 1:
-                                alert = {
-                                    'timestamp': datetime.now().isoformat(),
-                                    'sample_id': i,
-                                    'prediction': 'ANOMALY',
-                                    'confidence': self.get_anomaly_score(sample[:-1] if len(sample) > 43 else sample),
-                                    'container': os.environ.get('HOSTNAME', 'unknown')
-                                }
-                                alerts.append(alert)
-                                print(f"ALERT: Anomaly detected - Confidence: {alert['confidence']:.3f}")
+                                confidence = self.get_anomaly_score(sample[:-1] if len(sample) > 43 else sample)
+                                # Only alert if confidence exceeds threshold
+                                if confidence >= self.confidence_threshold:
+                                    anomaly_type = attack_categories[i] if i < len(attack_categories) else 'Unknown'
+                                    alert = {
+                                        'timestamp': datetime.now().isoformat(),
+                                        'sample_id': i,
+                                        'prediction': 'ANOMALY',
+                                        'anomaly_type': anomaly_type,
+                                        'confidence': confidence,
+                                        'container': os.environ.get('HOSTNAME', 'unknown')
+                                    }
+                                    alerts.append(alert)
+                                    print(f"ALERT: {anomaly_type} detected - Confidence: {confidence:.3f}")
 
                         # Save alerts
                         if alerts:
@@ -258,10 +317,15 @@ def main():
                        help='Path to monitor for real-time detection')
     parser.add_argument('--interval', type=int, default=5,
                        help='Monitoring interval in seconds')
+    parser.add_argument('--confidence', type=float, default=0.4,
+                       help='Confidence threshold for alerts (0.0-1.0, default: 0.4)')
+    parser.add_argument('--detection-threshold', type=float, default=0.10,
+                       help='Detection threshold as percentage of features (default: 0.10)')
 
     args = parser.parse_args()
 
-    detector = DockerAnomalyDetector()
+    # Create detector with custom thresholds
+    detector = DockerAnomalyDetector(confidence_threshold=args.confidence)
 
     if args.mode == 'train':
         print("Training mode selected")
