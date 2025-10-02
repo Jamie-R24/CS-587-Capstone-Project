@@ -44,7 +44,7 @@ free -h  # Linux
 
 ### Dataset Requirement
 
-The UNSW-NB15 dataset must be in the `training_data/` directory:
+The UNSW-NB15 dataset can be downloaded [here](https://www.kaggle.com/datasets/programmer3/unsw-nb15-dataset?resource=download) and must be in the `training_data/` directory:
 
 ```bash
 ls -lh training_data/UNSW_NB15.csv
