@@ -572,6 +572,10 @@ sudo rm data/output/reports/*.json
 # Check container health
 sudo docker inspect --format='{{.State.Health.Status}}' workstation
 
+# If container is 'unhealthy' try below:
+sudo docker stop workstation
+sudo docker start workstation
+
 # View container processes
 sudo docker exec -it monitor ps aux
 
