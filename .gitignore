@@ -1,9 +1,11 @@
 training_data/
 
-output/
+data/
 
 .claude/
 
 venv/
 
 scripts/__pycache__/
+
+*.pdf

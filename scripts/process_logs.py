@@ -18,7 +18,6 @@ class LogProcessor:
         self.processed_files = set()
 
         # Ensure output directories exist
-        os.makedirs(os.path.join(output_dir, 'processed'), exist_ok=True)
         os.makedirs(os.path.join(output_dir, 'alerts'), exist_ok=True)
         os.makedirs(os.path.join(output_dir, 'reports'), exist_ok=True)
 

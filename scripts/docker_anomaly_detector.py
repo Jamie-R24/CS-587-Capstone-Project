@@ -24,7 +24,6 @@ class DockerAnomalyDetector:
         # Create output directories
         os.makedirs(os.path.join(output_dir, 'models'), exist_ok=True)
         os.makedirs(os.path.join(output_dir, 'logs'), exist_ok=True)
-        os.makedirs(os.path.join(output_dir, 'predictions'), exist_ok=True)
         os.makedirs(os.path.join(output_dir, 'alerts'), exist_ok=True)
 
     def load_data(self, filename):
