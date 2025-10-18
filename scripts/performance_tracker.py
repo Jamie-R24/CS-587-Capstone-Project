@@ -33,8 +33,8 @@ class PerformanceTracker:
                     'iteration', 'timestamp', 'accuracy', 'precision', 'recall',
                     'f1_score', 'true_positives', 'false_positives',
                     'true_negatives', 'false_negatives', 'total_samples',
-                    'lateral_movement_detection_rate', 'reconnaissance_detection_rate',
-                    'exfiltration_detection_rate'
+                    'backdoor_detection_rate', 'reconnaissance_detection_rate',
+                    'generic_detection_rate'
                 ])
 
     def evaluate_detector(self, detector, iteration):
@@ -96,16 +96,26 @@ class PerformanceTracker:
         recall = true_positives / (true_positives + false_negatives) if (true_positives + false_negatives) > 0 else 0
         f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
 
+        # Map attack types to their target categories
+        attack_type_mapping = {
+            'Backdoors': 'Backdoors',
+            'Reconnaissance': 'Reconnaissance',
+            'Generic': 'Generic'
+        }
+        
         # Calculate detection rates by attack type
-        lateral_attacks = [i for i, at in enumerate(attack_types) if at == 'Backdoors']
+        lateral_attacks = [i for i, at in enumerate(attack_types) 
+                         if attack_type_mapping.get(at, '') == 'Backdoors']
         lateral_detected = sum(1 for i in lateral_attacks if predictions[i] == 1)
         lateral_detection_rate = lateral_detected / len(lateral_attacks) if lateral_attacks else 0
 
-        recon_attacks = [i for i, at in enumerate(attack_types) if at == 'Reconnaissance']
+        recon_attacks = [i for i, at in enumerate(attack_types) 
+                        if attack_type_mapping.get(at, '') == 'Reconnaissance']
         recon_detected = sum(1 for i in recon_attacks if predictions[i] == 1)
         recon_detection_rate = recon_detected / len(recon_attacks) if recon_attacks else 0
 
-        exfil_attacks = [i for i, at in enumerate(attack_types) if at == 'Generic']
+        exfil_attacks = [i for i, at in enumerate(attack_types) 
+                        if attack_type_mapping.get(at, '') == 'Generic']
         exfil_detected = sum(1 for i in exfil_attacks if predictions[i] == 1)
         exfil_detection_rate = exfil_detected / len(exfil_attacks) if exfil_attacks else 0
 
@@ -121,9 +131,9 @@ class PerformanceTracker:
             'true_negatives': true_negatives,
             'false_negatives': false_negatives,
             'total_samples': len(test_data),
-            'lateral_movement_detection_rate': lateral_detection_rate,
+            'backdoor_detection_rate': lateral_detection_rate,
             'reconnaissance_detection_rate': recon_detection_rate,
-            'exfiltration_detection_rate': exfil_detection_rate
+            'generic_detection_rate': exfil_detection_rate
         }
 
         # Print results
@@ -137,9 +147,9 @@ class PerformanceTracker:
         print(f"[Performance]   FN: {false_negatives:4d}  TN: {true_negatives:4d}")
         print(f"[Performance] ")
         print(f"[Performance] Detection Rates by Attack Type:")
-        print(f"[Performance]   Lateral Movement:  {lateral_detected}/{len(lateral_attacks)} ({lateral_detection_rate*100:.1f}%)")
-        print(f"[Performance]   Reconnaissance:    {recon_detected}/{len(recon_attacks)} ({recon_detection_rate*100:.1f}%)")
-        print(f"[Performance]   Data Exfiltration: {exfil_detected}/{len(exfil_attacks)} ({exfil_detection_rate*100:.1f}%)")
+        print(f"[Performance]   Backdoor:        {lateral_detected}/{len(lateral_attacks)} ({lateral_detection_rate*100:.1f}%)")
+        print(f"[Performance]   Reconnaissance:   {recon_detected}/{len(recon_attacks)} ({recon_detection_rate*100:.1f}%)")
+        print(f"[Performance]   Generic:         {exfil_detected}/{len(exfil_attacks)} ({exfil_detection_rate*100:.1f}%)")
 
         # Save to CSV
         with open(self.metrics_file, 'a', newline='') as f:
@@ -156,9 +166,9 @@ class PerformanceTracker:
                 metrics['true_negatives'],
                 metrics['false_negatives'],
                 metrics['total_samples'],
-                f"{metrics['lateral_movement_detection_rate']:.4f}",
+                f"{metrics['backdoor_detection_rate']:.4f}",
                 f"{metrics['reconnaissance_detection_rate']:.4f}",
-                f"{metrics['exfiltration_detection_rate']:.4f}"
+                f"{metrics['generic_detection_rate']:.4f}"
             ])
 
         print(f"\n[Performance] ✓ Metrics saved to {self.metrics_file}")
