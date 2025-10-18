@@ -8,12 +8,13 @@ import time
 import os
 import shutil
 import csv
+import glob
 from datetime import datetime
 import json
 
 class RetrainingScheduler:
     def __init__(self,
-                 original_dataset='/data/training_data/UNSW_NB15.csv',
+                 original_dataset='/data/training_data/UNSW_NB15_training_only.csv',
                  accumulated_data_dir='/data/accumulated_data',
                  retrain_interval=120,  # 2 minutes
                  output_dir='/data/output',
@@ -22,7 +23,7 @@ class RetrainingScheduler:
         Initialize retraining scheduler
 
         Args:
-            original_dataset: Path to UNSW-NB15 (baseline dataset)
+            original_dataset: Path to UNSW-NB15 training-only dataset (test set excluded)
             accumulated_data_dir: Directory with synthetic data snapshots
             retrain_interval: How often to retrain (seconds)
             output_dir: Where to save models and logs
@@ -38,133 +39,114 @@ class RetrainingScheduler:
         # Create directories
         os.makedirs(os.path.join(output_dir, 'models'), exist_ok=True)
         os.makedirs(os.path.join(output_dir, 'retraining_logs'), exist_ok=True)
-
-    # def create_combined_dataset(self):
-    #     """
-    #     Combine original UNSW-NB15 with accumulated synthetic data
-    #     Returns: Path to combined dataset, or None if insufficient data
-    #     """
-    #     print(f"\n[Retraining] {'='*60}")
-    #     print("[Retraining] Creating combined training dataset...")
-    #     print(f"[Retraining] {'='*60}")
-
-    #     # Check if accumulated data exists
-    #     import sys
-    #     sys.path.insert(0, '/scripts')
-    #     from data_accumulator import DataAccumulator
-    #     accumulator = DataAccumulator(accumulation_dir=self.accumulated_data_dir)
-    #     accumulated_path = accumulator.get_accumulated_data_path()
-
-    #     if not accumulated_path:
-    #         print("[Retraining] No accumulated data available - skipping retrain")
-    #         return None
-
-    #     # Check if enough new samples
-    #     try:
-    #         with open(accumulated_path, 'r') as f:
-    #             accumulated_lines = len(f.readlines()) - 1  # Exclude header
-    #     except:
-    #         accumulated_lines = 0
-
-    #     if accumulated_lines < self.min_new_samples:
-    #         print(f"[Retraining] Insufficient new samples ({accumulated_lines} < {self.min_new_samples}) - skipping retrain")
-    #         return None
-
-    #     # Create combined dataset
-    #     combined_path = os.path.join(
-    #         self.output_dir,
-    #         f'combined_training_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
-    #     )
-
-    #     # Read original dataset
-    #     original_rows = []
-    #     headers = None
-
-    #     print(f"[Retraining] Loading original dataset: {self.original_dataset}")
-    #     with open(self.original_dataset, 'r') as f:
-    #         reader = csv.DictReader(f)
-    #         headers = reader.fieldnames
-    #         original_rows = list(reader)
-
-    #     print(f"[Retraining]   → {len(original_rows)} samples from UNSW-NB15")
-
-    #     # Read accumulated synthetic data
-    #     accumulated_rows = []
-    #     print(f"[Retraining] Loading accumulated synthetic data: {accumulated_path}")
-    #     with open(accumulated_path, 'r') as f:
-    #         reader = csv.DictReader(f)
-    #         accumulated_rows = list(reader)
-
-    #     print(f"[Retraining]   → {len(accumulated_rows)} samples from synthetic traffic")
-
-    #     # Combine datasets
-    #     combined_rows = original_rows + accumulated_rows
-
-    #     # Write combined dataset
-    #     with open(combined_path, 'w', newline='') as f:
-    #         writer = csv.DictWriter(f, fieldnames=headers)
-    #         writer.writeheader()
-    #         writer.writerows(combined_rows)
-
-    #     print(f"\n[Retraining] ✓ Combined dataset created: {combined_path}")
-    #     print(f"[Retraining]   Total samples: {len(combined_rows)}")
-    #     print(f"[Retraining]   Original: {len(original_rows)} ({len(original_rows)/len(combined_rows)*100:.1f}%)")
-    #     print(f"[Retraining]   Synthetic: {len(accumulated_rows)} ({len(accumulated_rows)/len(combined_rows)*100:.1f}%)")
-
-    #     return combined_path
+        os.makedirs(accumulated_data_dir, exist_ok=True)
 
     def create_combined_dataset(self):
-        import csv
-        import glob
+        """
+        Combine original UNSW-NB15 training-only dataset with accumulated synthetic data
 
-        original_path = '/data/training_data/UNSW_NB15.csv'
-        snapshot_pattern = '/data/accumulated_data/snapshot_*.csv'
-        combined_path = '/data/accumulated_data/combined_training.csv'
+        Returns:
+            Path to combined dataset, or None if insufficient data
+        """
+        combined_path = os.path.join(self.accumulated_data_dir, 'combined_training.csv')
+        snapshot_pattern = os.path.join(self.accumulated_data_dir, 'snapshot_*.csv')
+
+        # Validate original dataset exists
+        if not os.path.exists(self.original_dataset):
+            print(f"[Retraining] Error: Original dataset not found at {self.original_dataset}")
+            return None
 
         # Read original dataset
-        with open(original_path, newline='') as f1:
-            reader1 = list(csv.DictReader(f1))
-            fieldnames = list(reader1[0].keys())
+        print(f"[Retraining] Loading original dataset: {self.original_dataset}")
+        try:
+            with open(self.original_dataset, 'r', newline='') as f:
+                reader = csv.DictReader(f)
+                # Normalize field names (remove extra spaces from corrupted headers)
+                fieldnames = [name.replace(' ', '') for name in reader.fieldnames]
+
+                # Read and normalize row keys
+                original_rows = []
+                for row in reader:
+                    normalized_row = {key.replace(' ', ''): value for key, value in row.items()}
+                    original_rows.append(normalized_row)
+        except Exception as e:
+            print(f"[Retraining] Error reading original dataset: {e}")
+            return None
+
+        if not original_rows:
+            print("[Retraining] Error: Original dataset is empty")
+            return None
+
+        print(f"[Retraining]   → {len(original_rows)} samples from UNSW-NB15 (training only)")
 
         # Initialize combined rows with original data
-        combined_rows = reader1
+        combined_rows = original_rows
 
         # Read all snapshot files
         snapshot_files = sorted(glob.glob(snapshot_pattern))
         if not snapshot_files:
             print("[Retraining] No snapshot files found - using only original dataset")
-            return original_path
+            return self.original_dataset
 
         print(f"[Retraining] Found {len(snapshot_files)} snapshot files")
         total_synthetic_samples = 0
 
         for snapshot_file in snapshot_files:
             try:
-                with open(snapshot_file, newline='') as f:
+                with open(snapshot_file, 'r', newline='') as f:
                     reader = csv.DictReader(f)
-                    snapshot_rows = list(reader)
+
+                    # Normalize snapshot rows to match fieldnames
+                    snapshot_rows = []
+                    for row in reader:
+                        # Normalize keys and fill missing fields
+                        normalized_row = {}
+                        for key in fieldnames:
+                            # Try to find the field with normalized name
+                            found = False
+                            for orig_key, value in row.items():
+                                if orig_key.replace(' ', '') == key:
+                                    normalized_row[key] = value
+                                    found = True
+                                    break
+                            # If not found, use empty string
+                            if not found:
+                                normalized_row[key] = ""
+
+                        snapshot_rows.append(normalized_row)
+
+                    if not snapshot_rows:
+                        continue
+
+                    combined_rows.extend(snapshot_rows)
                     total_synthetic_samples += len(snapshot_rows)
-                    
-                    # Fill missing fields with empty string
-                    def fill_missing(row):
-                        return {key: row.get(key, "") for key in fieldnames}
-                    
-                    combined_rows.extend([fill_missing(row) for row in snapshot_rows])
-                print(f"[Retraining] Added {len(snapshot_rows)} samples from {snapshot_file}")
+
+                print(f"[Retraining] Added {len(snapshot_rows)} samples from {os.path.basename(snapshot_file)}")
             except Exception as e:
                 print(f"[Retraining] Error reading {snapshot_file}: {e}")
                 continue
 
+        # Check minimum sample requirement
+        if total_synthetic_samples < self.min_new_samples:
+            print(f"[Retraining] Insufficient new samples ({total_synthetic_samples} < {self.min_new_samples})")
+            print(f"[Retraining] Skipping retraining - waiting for more data")
+            return None
+
         # Write combined dataset
-        with open(combined_path, 'w', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(combined_rows)
+        try:
+            with open(combined_path, 'w', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(combined_rows)
+        except Exception as e:
+            print(f"[Retraining] Error writing combined dataset: {e}")
+            return None
 
         print(f"[Retraining] ✓ Combined dataset created: {combined_path}")
         print(f"[Retraining]   Total samples: {len(combined_rows)}")
-        print(f"[Retraining]   Original: {len(reader1)} ({len(reader1)/len(combined_rows)*100:.1f}%)")
+        print(f"[Retraining]   Original: {len(original_rows)} ({len(original_rows)/len(combined_rows)*100:.1f}%)")
         print(f"[Retraining]   Synthetic: {total_synthetic_samples} ({total_synthetic_samples/len(combined_rows)*100:.1f}%)")
+
         return combined_path
 
     def backup_current_model(self):
