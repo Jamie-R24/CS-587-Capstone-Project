@@ -19,6 +19,7 @@ echo "1.5 Clearing data/output folder..."
 sudo rm -rf data/output
 sudo rm -rf data/accumulated_data
 sudo rm -rf data/test_sets
+sudo rm -rf ./data/poisoning
 echo "    ✓ Output removed"
 echo ""
 
@@ -30,7 +31,7 @@ echo ""
 
 # Wait for containers to be ready
 echo "3. Waiting for initialization..."
-echo "   This may take 60-90 seconds..."
+echo "   This may take 15-20 seconds..."
 echo ""
 
 MAX_WAIT=720
@@ -103,8 +104,8 @@ echo "  System Ready!"
 echo "========================================="
 echo ""
 echo "Background services running:"
-echo "  • Data Accumulator (5 min snapshots)"
-echo "  • Retraining Scheduler (5 min intervals)"
+echo "  • Data Accumulator (2 min snapshots)"
+echo "  • Retraining Scheduler (2 min intervals)"
 echo ""
 echo "Next steps:"
 echo "  1. View retraining logs:"

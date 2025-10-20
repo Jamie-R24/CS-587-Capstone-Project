@@ -81,9 +81,10 @@ The system uses a **Z-score based approach**:
 
 The target container continuously generates synthetic network traffic:
 
-- **Generation Rate**: 10 flows every 10 seconds (~60 flows/minute)
-- **Traffic Ratio**: 80% normal, 20% anomalous
+- **Generation Rate**: 100 flows every 10 seconds (~600 flows/minute)
+- **Traffic Ratio**: 30% normal, 70% anomalous
 - **Attack Simulation**: Realistic attack patterns based on known TTPs
+- **Poisoning Support**: Optional label flipping for data poisoning attacks (see [POISONING_GUIDE.md](POISONING_GUIDE.md))
 
 ## Performance Metrics
 
@@ -127,38 +128,47 @@ CS-587-Capstone-Project/
 ✅ **Containerized Architecture**: Isolated, reproducible environment
 ✅ **Real-time Detection**: Continuous monitoring and alerting
 ✅ **Synthetic Traffic**: Realistic attack simulation for testing
+✅ **Automatic Retraining**: Periodic model updates with accumulated data
+✅ **Data Poisoning Research**: Built-in support for label flipping attacks
 ✅ **Comprehensive Logging**: Detailed logs and performance metrics
 ✅ **Flexible Configuration**: Tunable thresholds and parameters
 ✅ **Attack Categorization**: Identifies specific attack types
+✅ **Performance Tracking**: Metrics over time with fixed test sets
 
 ## Getting Started
 
 For detailed setup, configuration, and operational instructions, see:
 
-**→ [ENV_LAUNCH.md](ENV_LAUNCH.md)** - Complete Docker environment guide
+**→ [LAUNCH_GUIDE.md](LAUNCH_GUIDE.md)** - Complete Docker environment guide
+**→ [POISONING_GUIDE.md](POISONING_GUIDE.md)** - Data poisoning attack documentation
 
 ### Quick Start
 
 ```bash
-# 1. Start the system
-sudo docker-compose up -d
-
-# 2. Wait for initialization (~60 seconds)
+# 1. Start the system (handles all initialization automatically)
 ./restart_system.sh
 
-# 3. Train the model
-sudo docker exec -it workstation python3 /scripts/docker_anomaly_detector.py --mode train
+# 2. Wait for initialization (~15-20 seconds)
+# System automatically creates test set, trains model, and starts services
 
-# 4. Monitor alerts
+# 3. Monitor the system
 ./monitor_dashboard.sh
+
+# 4. (Optional) Enable data poisoning
+# Edit data/poisoning/poisoning_config.json and set "enabled": true
+# See POISONING_GUIDE.md for details
+
+# 5. (Optional) Analyze poisoning results
+# ./analyze_poisoning.sh
 ```
 
 ## Use Cases
 
-- **Security Research**: Study network attack patterns
-- **Education**: Learn anomaly detection techniques
-- **Testing**: Evaluate detection algorithms
-- **Development**: Build and test security tools
+- **Security Research**: Study network attack patterns and data poisoning attacks
+- **Education**: Learn anomaly detection and adversarial ML techniques
+- **Testing**: Evaluate detection algorithms under normal and poisoned conditions
+- **Development**: Build and test security tools with automatic retraining
+- **Adversarial ML**: Demonstrate impact of data poisoning on ML models
 
 ## Future Enhancements
 

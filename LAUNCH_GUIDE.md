@@ -31,12 +31,12 @@
 # Start the system
 ./restart_system.sh
 
-# Wait for initialization (~60 seconds)
+# Wait for initialization (~15-20 seconds)
 # System will automatically:
-# - Create test set
+# - Create fixed test set
 # - Train initial model
-# - Start data accumulator
-# - Start retraining scheduler
+# - Start data accumulator (snapshots every 2 min)
+# - Start retraining scheduler (retrains every 2 min)
 ```
 
 ### 2. Verify Operation
@@ -136,16 +136,16 @@ The system implements automatic scheduled retraining:
 ```
 ┌─────────────────┐
 │     TARGET      │    Generates synthetic traffic
-└────────┬────────┘    (80% normal, 20% anomalous)
+└────────┬────────┘    (30% normal, 70% anomalous)
          │
          ▼
 ┌─────────────────┐
-│   ACCUMULATOR   │    Takes snapshots every 5 minutes
+│   ACCUMULATOR   │    Takes snapshots every 2 minutes
 └────────┬────────┘    Stores in accumulated_data/
          │
          ▼
 ┌─────────────────┐
-│   RETRAINING    │    Runs every 5 minutes
+│   RETRAINING    │    Runs every 2 minutes
 └────────┬────────┘    Combines: UNSW-NB15 + Synthetic
          │
          ▼
@@ -182,10 +182,10 @@ sudo docker exec workstation ls -lh /data/accumulated_data/
 1. Change Intervals
 Edit docker-compose.yml:
 ```yaml
-# Retraining interval (default: 300s/5min)
-python3 /scripts/retraining_scheduler.py --interval 600  # 10min
+# Retraining interval (default: 120s/2min)
+python3 /scripts/retraining_scheduler.py --interval 300  # 5min
 
-# Snapshot interval (default: 300s/5min)
+# Snapshot interval (default: 120s/2min)
 python3 /scripts/data_accumulator.py --interval 180  # 3min
 ```
 

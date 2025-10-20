@@ -16,7 +16,7 @@ class RetrainingScheduler:
     def __init__(self,
                  original_dataset='/data/training_data/UNSW_NB15_training_only.csv',
                  accumulated_data_dir='/data/accumulated_data',
-                 retrain_interval=120,  # 2 minutes
+                 retrain_interval=90,  # 1.5 minutes
                  output_dir='/data/output',
                  min_new_samples=50):  # Minimum new samples before retraining
         """
@@ -144,8 +144,8 @@ class RetrainingScheduler:
 
         print(f"[Retraining] ✓ Combined dataset created: {combined_path}")
         print(f"[Retraining]   Total samples: {len(combined_rows)}")
-        print(f"[Retraining]   Original: {len(original_rows)} ({len(original_rows)/len(combined_rows)*100:.1f}%)")
         print(f"[Retraining]   Synthetic: {total_synthetic_samples} ({total_synthetic_samples/len(combined_rows)*100:.1f}%)")
+        print(f"[Retraining]   Original: {abs(len(original_rows)-total_synthetic_samples)} ({abs(len(original_rows)-total_synthetic_samples)/len(combined_rows)*100:.1f}%)")
 
         return combined_path
 
@@ -212,6 +212,47 @@ class RetrainingScheduler:
             with open(log_path, 'w') as f:
                 json.dump(log_entry, f, indent=2)
 
+            # Create synthetic test set ONCE (if not already created)
+            test_set_flag = '/data/test_sets/synthetic_test_set_created.flag'
+
+            if not os.path.exists(test_set_flag):
+                print("\n[Retraining] Creating FIXED synthetic test set (one-time only)...")
+                try:
+                    from create_synthetic_test_set import create_synthetic_test_set
+                    is_synthetic = create_synthetic_test_set(
+                        accumulated_dir=self.accumulated_data_dir,
+                        fallback_path='/data/training_data/UNSW_NB15.csv',
+                        output_path='/data/test_sets/fixed_test_set.csv',
+                        test_size=500,
+                        min_synthetic_samples=500
+                    )
+
+                    if is_synthetic:
+                        # Create flag file to prevent recreation
+                        with open(test_set_flag, 'w') as f:
+                            f.write(f"Synthetic test set created at cycle {self.retrain_count}\n")
+                            f.write(f"Timestamp: {datetime.now().isoformat()}\n")
+                            f.write(f"Note: This test set will be reused for all subsequent evaluations\n")
+                        print(f"[Retraining] ✓ FIXED synthetic test set created at cycle {self.retrain_count}")
+                        print(f"[Retraining] ✓ Flag created: {test_set_flag}")
+                        print(f"[Retraining] This test set will be reused for consistent evaluation")
+                    else:
+                        print("[Retraining] ⚠️  Using UNSW fallback test set (insufficient synthetic data)")
+                        print("[Retraining] Will retry creating synthetic test set next cycle")
+
+                except Exception as e:
+                    print(f"[Retraining] ⚠️  Could not create test set: {e}")
+                    print(f"[Retraining] Will retry next cycle if test set missing")
+            else:
+                print(f"\n[Retraining] Using existing FIXED synthetic test set (created previously)")
+                # Show when it was created
+                try:
+                    with open(test_set_flag, 'r') as f:
+                        flag_info = f.read().strip()
+                        print(f"[Retraining] {flag_info.split(chr(10))[0]}")  # First line
+                except:
+                    pass
+
             # Evaluate performance if tracker available
             try:
                 from performance_tracker import PerformanceTracker
@@ -260,8 +301,8 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description='Scheduled Retraining for Anomaly Detector')
-    parser.add_argument('--interval', type=int, default=300,
-                       help='Retraining interval in seconds (default: 300 = 5 minutes)')
+    parser.add_argument('--interval', type=int, default=90,
+                       help='Retraining interval in seconds (default: 90 = 1.5 minutes)')
     parser.add_argument('--min-samples', type=int, default=50,
                        help='Minimum new samples before retraining (default: 50)')
     parser.add_argument('--run-once', action='store_true',

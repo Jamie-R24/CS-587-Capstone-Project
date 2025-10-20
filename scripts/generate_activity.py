@@ -2,14 +2,19 @@
 """
 Generate realistic network activity for the target container
 Creates both normal and anomalous patterns
+Supports data poisoning via label flipping
 """
 
 import time
 import random
 import csv
 import os
+import sys
 from datetime import datetime
 from faker import Faker
+
+# Add scripts directory to path for imports
+sys.path.insert(0, '/scripts')
 
 fake = Faker()
 
@@ -35,6 +40,20 @@ class NetworkActivityGenerator:
                 'unusual_destinations': True
             }
         }
+
+        # Initialize poisoning controller
+        try:
+            from poisoning_controller import PoisoningController
+            self.poisoning_controller = PoisoningController()
+            print("[Generator] Poisoning controller initialized")
+        except Exception as e:
+            print(f"[Generator] Warning: Could not initialize poisoning controller: {e}")
+            self.poisoning_controller = None
+
+        # Poisoning statistics
+        self.total_generated = 0
+        self.total_anomalies = 0
+        self.total_poisoned = 0
 
     def generate_normal_flow(self):
         """Generate normal network flow"""
@@ -141,19 +160,65 @@ class NetworkActivityGenerator:
 
         return flow
 
+    def apply_label_flip_poison(self, flow):
+        """
+        Apply label flipping poisoning to an anomalous flow
+        Keeps all anomalous features but labels it as normal
+
+        Args:
+            flow: Anomalous flow dictionary
+
+        Returns:
+            Poisoned flow (anomaly labeled as normal)
+        """
+        # Store original label and attack category for logging
+        original_label = flow['label']
+        original_attack = flow['attack_cat']
+
+        # Flip labels to make anomaly appear normal
+        flow['label'] = 0
+        flow['attack_cat'] = 'Normal'
+
+        # Track poisoning (internal, not written to CSV)
+        self.total_poisoned += 1
+
+        if self.poisoning_controller:
+            self.poisoning_controller.increment_poisoned_count(1)
+
+        # Occasional logging for visibility
+        if self.total_poisoned % 10 == 0:
+            print(f"[Generator] POISONING: Flipped {original_attack} → Normal (total poisoned: {self.total_poisoned})")
+
+        return flow
+
     def generate_flow(self):
         """Generate a single network flow (normal or anomalous)"""
+        self.total_generated += 1
+
         # 80% normal, 20% anomalous
-        if random.random() < 0.8:
+        if random.random() < 0.3:
             return self.generate_normal_flow()
         else:
+            # Generate anomaly
+            self.total_anomalies += 1
             anomaly_type = random.choice(['lateral_movement', 'reconnaissance', 'data_exfiltration'])
+
             if anomaly_type == 'lateral_movement':
-                return self.generate_lateral_movement()
+                flow = self.generate_lateral_movement()
             elif anomaly_type == 'reconnaissance':
-                return self.generate_reconnaissance()
+                flow = self.generate_reconnaissance()
             else:
-                return self.generate_data_exfiltration()
+                flow = self.generate_data_exfiltration()
+
+            # Check if poisoning is active and should be applied
+            if self.poisoning_controller and self.poisoning_controller.is_poisoning_active():
+                poison_rate = self.poisoning_controller.get_poison_rate()
+
+                # Randomly poison based on poison_rate
+                if random.random() < poison_rate:
+                    flow = self.apply_label_flip_poison(flow)
+
+            return flow
 
     def run_continuous(self, interval=2):
         """Continuously generate network activity"""
@@ -177,8 +242,9 @@ class NetworkActivityGenerator:
             writer = csv.DictWriter(f, fieldnames=headers)
             writer.writeheader()
 
-        batch_size = 10
+        batch_size = 100
         batch = []
+        batch_count = 0
 
         try:
             while True:
@@ -192,12 +258,20 @@ class NetworkActivityGenerator:
                     writer = csv.DictWriter(f, fieldnames=headers)
                     writer.writerows(batch)
 
+                batch_count += 1
                 print(f"{datetime.now()}: Generated {len(batch)} network flows")
 
                 # Check for anomalies in batch
                 anomalies = sum(1 for flow in batch if flow['label'] == 1)
                 if anomalies > 0:
                     print(f"  -> {anomalies} anomalous flows detected")
+
+                # Print poisoning status every 10 batches (~100 flows)
+                if batch_count % 10 == 0 and self.poisoning_controller:
+                    is_active = self.poisoning_controller.is_poisoning_active()
+                    if is_active:
+                        poison_rate = self.poisoning_controller.get_poison_rate()
+                        print(f"\n[POISONING ACTIVE] Rate: {poison_rate*100:.1f}% | Poisoned: {self.total_poisoned}/{self.total_anomalies} anomalies\n")
 
                 batch = []
                 time.sleep(interval)
