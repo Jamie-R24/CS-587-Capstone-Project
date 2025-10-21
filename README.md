@@ -145,20 +145,23 @@ For detailed setup, configuration, and operational instructions, see:
 ### Quick Start
 
 ```bash
-# 1. Start the system (handles all initialization automatically)
+# 1. First time setup: Extract the dataset
+unzip training_data/UNSW_NB15.zip -d training_data/
+
+# 2. Start the system (handles all initialization automatically)
 ./restart_system.sh
 
-# 2. Wait for initialization (~15-20 seconds)
+# 3. Wait for initialization (~15-20 seconds)
 # System automatically creates test set, trains model, and starts services
 
-# 3. Monitor the system
+# 4. Monitor the system
 ./monitor_dashboard.sh
 
-# 4. (Optional) Enable data poisoning
+# 5. (Optional) Enable data poisoning
 # Edit data/poisoning/poisoning_config.json and set "enabled": true
 # See POISONING_GUIDE.md for details
 
-# 5. (Optional) Analyze poisoning results
+# 6. (Optional) Analyze poisoning results
 # ./analyze_poisoning.sh
 ```
 

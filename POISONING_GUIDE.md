@@ -117,6 +117,9 @@ Generate Anomaly → label=1, attack_cat="Backdoors", [attack features]
 ### Step 1: Start the System
 
 ```bash
+# First time only: Extract the dataset
+unzip training_data/UNSW_NB15.zip -d training_data/
+
 # Start system with automatic initialization
 ./restart_system.sh
 

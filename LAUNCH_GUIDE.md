@@ -21,13 +21,17 @@
 - 2GB+ free disk space
 
 ### Dataset Requirements
-- UNSW-NB15 dataset in `training_data/` directory
-- Download from: [UNSW-NB15 Dataset](https://www.kaggle.com/datasets/programmer3/unsw-nb15-dataset?resource=download)
+- UNSW-NB15 dataset is included as `training_data/UNSW_NB15.zip`
+- **First time setup**: Extract the zip file before starting the system
+- Dataset source: [UNSW-NB15 Dataset](https://www.kaggle.com/datasets/programmer3/unsw-nb15-dataset?resource=download)
 
 ## Quick Start
 
 ### 1. Initial Setup
 ```bash
+# First time only: Extract the dataset
+unzip training_data/UNSW_NB15.zip -d training_data/
+
 # Start the system
 ./restart_system.sh
 
