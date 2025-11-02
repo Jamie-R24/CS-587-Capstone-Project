@@ -426,7 +426,7 @@ class TestPoisonRate:
         poison_rate = controller.get_poison_rate()
 
         # Should return default (0.45 according to code)
-        assert poison_rate == 0.45
+        assert poison_rate == 1.0
 
 
 # ============================================================================

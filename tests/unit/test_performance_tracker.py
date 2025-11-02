@@ -38,6 +38,7 @@ class TestInitialization:
     def test_create_output_directories(self, temp_dir):
         """Test that necessary output directories are created"""
         output_dir = os.path.join(temp_dir, 'output')
+        tracker = PerformanceTracker(output_dir=output_dir)
 
         # Check directories created
         assert os.path.exists(output_dir)
