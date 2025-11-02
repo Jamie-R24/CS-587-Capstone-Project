@@ -1,8 +1,6 @@
 name: Unit Tests
 
 on:
-  push:
-    branches: [ main, poisoning ]
   pull_request:
     branches: [ main, poisoning ]
   workflow_dispatch:  # Allow manual triggering
