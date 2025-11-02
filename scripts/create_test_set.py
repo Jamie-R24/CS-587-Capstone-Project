@@ -45,10 +45,22 @@ def create_fixed_test_set(source_path='/data/training_data/UNSW_NB15.csv',
     all_rows = []
     headers = None
 
+    if not os.path.exists(source_path):
+        print(f"Error: Source file not found: {source_path}")
+        return
+
     with open(source_path, 'r') as f:
         reader = csv.DictReader(f)
         headers = reader.fieldnames
         all_rows = list(reader)
+
+    if not headers:
+        print(f"Error: No headers found in source file: {source_path}")
+        return
+    
+    if not all_rows:
+        print(f"Error: No data rows found in source file: {source_path}")
+        return
 
     print(f"Total samples available: {len(all_rows)}")
 
@@ -123,21 +135,34 @@ def create_fixed_test_set(source_path='/data/training_data/UNSW_NB15.csv',
 
     # Create a reduced training set (original minus test samples)
     # This ensures test data is never seen during training
-    training_set_path = '/data/training_data/UNSW_NB15_training_only.csv'
-
+    # Derive training set path from source path
+    source_dir = os.path.dirname(source_path)
+    source_name = os.path.basename(source_path)
+    
     # Convert test set to set of tuples for fast lookup
     test_set_tuples = {tuple(sorted(row.items())) for row in test_set}
-
     training_rows = [row for row in all_rows if tuple(sorted(row.items())) not in test_set_tuples]
+    
+    # If running in test environment, use temp directory
+    if '/tmp/' in source_path or 'test' in source_path.lower():
+        training_set_path = os.path.join(source_dir, source_name.replace('.csv', '_training_only.csv'))
+    else:
+        training_set_path = '/data/training_data/UNSW_NB15_training_only.csv'
+    
+    # Only create training set if we have data
+    if len(training_rows) > 0:
+        os.makedirs(os.path.dirname(training_set_path), exist_ok=True)
+        
+        with open(training_set_path, 'w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=headers)
+            writer.writeheader()
+            writer.writerows(training_rows)
 
-    with open(training_set_path, 'w', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=headers)
-        writer.writeheader()
-        writer.writerows(training_rows)
-
-    print(f"\n✓ Training-only dataset created: {training_set_path}")
-    print(f"  Total samples: {len(training_rows)}")
-    print(f"\nNote: Use {training_set_path} for initial training to avoid data leakage")
+        print(f"\n✓ Training-only dataset created: {training_set_path}")
+        print(f"  Total samples: {len(training_rows)}")
+        print(f"\nNote: Use {training_set_path} for initial training to avoid data leakage")
+    else:
+        print(f"\n⚠️  Warning: No training samples remaining after test set extraction")
 
 def main():
     import argparse

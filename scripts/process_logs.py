@@ -12,14 +12,281 @@ from datetime import datetime
 import subprocess
 
 class LogProcessor:
-    def __init__(self, log_dir='/var/log/activity', output_dir='/data/output'):
+    def __init__(self, log_dir='/var/log/activity', output_dir='/data/output', alert_threshold=0.8):
         self.log_dir = log_dir
         self.output_dir = output_dir
         self.processed_files = set()
+        self.alert_threshold = alert_threshold
+        self.processed_logs = []
+        self._alert_counter = 0
 
         # Ensure output directories exist
         os.makedirs(os.path.join(output_dir, 'alerts'), exist_ok=True)
         os.makedirs(os.path.join(output_dir, 'reports'), exist_ok=True)
+        os.makedirs(os.path.join(output_dir, 'logs'), exist_ok=True)
+
+    def parse_log_entry(self, log_entry):
+        """Parse a log entry and determine its type"""
+        parsed = {'timestamp': log_entry.get('timestamp', datetime.now().isoformat())}
+        
+        # Determine log type based on content
+        if 'anomaly_score' in log_entry or 'prediction' in log_entry:
+            parsed['type'] = 'anomaly_detection'
+            parsed['anomaly_score'] = log_entry.get('anomaly_score', 0)
+            parsed['confidence'] = log_entry.get('confidence', 0)
+            parsed['prediction'] = log_entry.get('prediction', 0)
+        elif 'accuracy' in log_entry or 'training_samples' in log_entry:
+            parsed['type'] = 'model_training'
+            parsed['accuracy'] = log_entry.get('accuracy', 0)
+            parsed['precision'] = log_entry.get('precision', 0)
+            parsed['recall'] = log_entry.get('recall', 0)
+            parsed['f1_score'] = log_entry.get('f1_score', 0)
+            parsed['training_samples'] = log_entry.get('training_samples', 0)
+        elif 'component' in log_entry or 'error_code' in log_entry:
+            parsed['type'] = 'system_event'
+            parsed['level'] = log_entry.get('level', 'INFO')
+            parsed['message'] = log_entry.get('message', '')
+            parsed['component'] = log_entry.get('component', '')
+            parsed['error_code'] = log_entry.get('error_code', '')
+        else:
+            # Malformed or unknown
+            if not log_entry.get('timestamp') or not log_entry.get('message'):
+                return None
+            parsed['type'] = 'unknown'
+            parsed['level'] = log_entry.get('level', 'INFO')
+            parsed['message'] = log_entry.get('message', '')
+        
+        return parsed
+
+    def generate_alert(self, log_entry):
+        """Generate an alert from a log entry"""
+        self._alert_counter += 1
+        alert_id = f"ALT_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{self._alert_counter:04d}"
+        
+        # Check if this is a high-confidence anomaly
+        if 'anomaly_score' in log_entry:
+            confidence = log_entry.get('confidence', 0)
+            if confidence >= self.alert_threshold:
+                alert = {
+                    'alert_id': alert_id,
+                    'timestamp': log_entry.get('timestamp', datetime.now().isoformat()),
+                    'alert_type': 'high_confidence_anomaly',
+                    'severity': 'HIGH',
+                    'anomaly_score': log_entry.get('anomaly_score', 0),
+                    'confidence': confidence,
+                    'description': 'High confidence anomaly detected'
+                }
+                return alert
+            else:
+                return None
+        
+        # Check for performance degradation
+        if 'degradation_percent' in log_entry:
+            alert = {
+                'alert_id': alert_id,
+                'timestamp': log_entry.get('timestamp', datetime.now().isoformat()),
+                'alert_type': 'performance_degradation',
+                'severity': 'MEDIUM',
+                'current_accuracy': log_entry.get('accuracy', 0),
+                'previous_accuracy': log_entry.get('previous_accuracy', 0),
+                'degradation_percent': log_entry.get('degradation_percent', 0),
+                'description': 'Model performance has degraded'
+            }
+            return alert
+        
+        # Check for system errors
+        if log_entry.get('level') == 'ERROR':
+            alert = {
+                'alert_id': alert_id,
+                'timestamp': log_entry.get('timestamp', datetime.now().isoformat()),
+                'alert_type': 'system_error',
+                'severity': 'CRITICAL',
+                'component': log_entry.get('component', 'unknown'),
+                'error_code': log_entry.get('error_code', ''),
+                'message': log_entry.get('message', ''),
+                'description': 'Critical system error detected'
+            }
+            return alert
+        
+        return None
+
+    def save_alert(self, alert):
+        """Save an alert to a JSON file"""
+        alerts_dir = os.path.join(self.output_dir, 'alerts')
+        os.makedirs(alerts_dir, exist_ok=True)
+        
+        alert_file = os.path.join(alerts_dir, f'alerts_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json')
+        
+        # Save alert as single object (not wrapped in list for compatibility with tests)
+        with open(alert_file, 'w') as f:
+            json.dump(alert, f, indent=2)
+        
+        return alert_file
+
+    def load_alerts(self, time_window=None):
+        """Load alerts from files, optionally within a time window"""
+        alerts_dir = os.path.join(self.output_dir, 'alerts')
+        if not os.path.exists(alerts_dir):
+            return []
+        
+        all_alerts = []
+        for alert_file in os.listdir(alerts_dir):
+            if alert_file.endswith('.json'):
+                try:
+                    with open(os.path.join(alerts_dir, alert_file), 'r') as f:
+                        alerts = json.load(f)
+                        if isinstance(alerts, list):
+                            all_alerts.extend(alerts)
+                        else:
+                            all_alerts.append(alerts)
+                except Exception as e:
+                    print(f"Error loading alert file {alert_file}: {e}")
+        
+        # Filter by time window if specified
+        if time_window:
+            cutoff_time = (datetime.now() - time_window).isoformat()
+            all_alerts = [a for a in all_alerts if a.get('timestamp', '') >= cutoff_time]
+        
+        return all_alerts
+
+    def process_log_entry(self, log_entry):
+        """Process a single log entry"""
+        parsed = self.parse_log_entry(log_entry)
+        if parsed:
+            self.processed_logs.append(parsed)
+        
+        # Generate alert if needed from original log entry (not parsed)
+        alert = self.generate_alert(log_entry)
+        if alert:
+            self.save_alert(alert)
+        
+        return parsed
+
+    def get_anomaly_statistics(self):
+        """Get statistics about anomaly detections"""
+        anomaly_logs = [log for log in self.processed_logs if log.get('type') == 'anomaly_detection']
+        
+        if not anomaly_logs:
+            return {
+                'total_detections': 0,
+                'anomaly_rate': 0,
+                'average_confidence': 0,
+                'high_confidence_alerts': 0
+            }
+        
+        total = len(anomaly_logs)
+        anomalies = sum(1 for log in anomaly_logs if log.get('prediction', 0) == 1)
+        avg_confidence = sum(log.get('confidence', 0) for log in anomaly_logs) / total
+        high_conf_alerts = sum(1 for log in anomaly_logs 
+                              if log.get('confidence', 0) >= self.alert_threshold)
+        
+        return {
+            'total_detections': total,
+            'anomaly_rate': anomalies / total if total > 0 else 0,
+            'average_confidence': avg_confidence,
+            'high_confidence_alerts': high_conf_alerts
+        }
+
+    def analyze_temporal_patterns(self):
+        """Analyze temporal patterns in logs"""
+        if not self.processed_logs:
+            return {
+                'time_range': None,
+                'detection_frequency': 0,
+                'peak_hours': []
+            }
+        
+        timestamps = [log.get('timestamp', '') for log in self.processed_logs if log.get('timestamp')]
+        
+        if not timestamps:
+            return {
+                'time_range': None,
+                'detection_frequency': 0,
+                'peak_hours': []
+            }
+        
+        # Simple temporal analysis
+        from collections import Counter
+        hours = []
+        for ts in timestamps:
+            try:
+                hour = int(ts.split('T')[1].split(':')[0])
+                hours.append(hour)
+            except:
+                pass
+        
+        hour_counts = Counter(hours)
+        peak_hours = [hour for hour, count in hour_counts.most_common(3)]
+        
+        return {
+            'time_range': {
+                'start': min(timestamps),
+                'end': max(timestamps)
+            },
+            'detection_frequency': len(timestamps) / max(len(set(hours)), 1),
+            'peak_hours': peak_hours
+        }
+
+    def generate_report(self):
+        """Generate a comprehensive report"""
+        stats = self.get_anomaly_statistics()
+        temporal = self.analyze_temporal_patterns()
+        
+        report = {
+            'timestamp': datetime.now().isoformat(),
+            'total_logs_processed': len(self.processed_logs),
+            'anomaly_statistics': stats,
+            'temporal_analysis': temporal,
+            'alert_summary': {
+                'total_alerts_generated': len(self.load_alerts())
+            }
+        }
+        
+        # Save report
+        report_path = os.path.join(self.output_dir, 'reports', 
+                                  f'report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json')
+        os.makedirs(os.path.dirname(report_path), exist_ok=True)
+        
+        with open(report_path, 'w') as f:
+            json.dump(report, f, indent=2)
+        
+        return report
+
+    def process_log_file(self, log_file_path):
+        """Process an entire log file"""
+        if not os.path.exists(log_file_path):
+            raise FileNotFoundError(f"Log file not found: {log_file_path}")
+        
+        processed_entries = []
+        with open(log_file_path, 'r') as f:
+            for line in f:
+                try:
+                    log_entry = json.loads(line.strip())
+                    processed = self.process_log_entry(log_entry)
+                    processed_entries.append(processed)
+                except json.JSONDecodeError:
+                    # Skip invalid JSON lines
+                    continue
+                except Exception as e:
+                    print(f"Error processing log entry: {e}")
+        
+        return processed_entries
+
+    def filter_logs(self, log_type=None, severity=None, time_window=None):
+        """Filter processed logs by type, severity, or time window"""
+        filtered = self.processed_logs
+        
+        if log_type:
+            filtered = [log for log in filtered if log.get('type') == log_type]
+        
+        if severity:
+            filtered = [log for log in filtered if log.get('severity') == severity]
+        
+        if time_window:
+            cutoff_time = (datetime.now() - time_window).isoformat()
+            filtered = [log for log in filtered if log.get('timestamp', '') >= cutoff_time]
+        
+        return filtered
 
     def wait_for_model(self, timeout=300):
         """Wait for trained model to be available"""

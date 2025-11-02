@@ -14,6 +14,45 @@ class TestSetManager:
         self.flag_path = '/data/test_sets/synthetic_test_set_created.flag'
         self.samples_path = '/data/test_sets/synthetic_test_samples.txt'
 
+    def create_backup(self):
+        """Create a backup of the current test set"""
+        if not os.path.exists(self.test_set_path):
+            return False
+        
+        try:
+            backup_path = self.test_set_path.replace('.csv', f'_backup_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv')
+            import shutil
+            shutil.copy(self.test_set_path, backup_path)
+            print(f"✓ Backup created: {backup_path}")
+            return True
+        except Exception as e:
+            print(f"✗ Error creating backup: {e}")
+            return False
+
+    def restore_from_backup(self, backup_path=None):
+        """Restore test set from a backup"""
+        if backup_path is None:
+            # Find most recent backup
+            import glob
+            backups = glob.glob(self.test_set_path.replace('.csv', '_backup_*.csv'))
+            if not backups:
+                print("✗ No backups found")
+                return False
+            backup_path = max(backups)  # Most recent
+        
+        if not os.path.exists(backup_path):
+            print(f"✗ Backup not found: {backup_path}")
+            return False
+        
+        try:
+            import shutil
+            shutil.copy(backup_path, self.test_set_path)
+            print(f"✓ Restored from backup: {backup_path}")
+            return True
+        except Exception as e:
+            print(f"✗ Error restoring from backup: {e}")
+            return False
+
     def show_info(self):
         """Display information about the current test set"""
         print("\n" + "="*70)

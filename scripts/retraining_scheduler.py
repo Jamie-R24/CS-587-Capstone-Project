@@ -18,7 +18,9 @@ class RetrainingScheduler:
                  accumulated_data_dir='/data/accumulated_data',
                  retrain_interval=90,  # 1.5 minutes
                  output_dir='/data/output',
-                 min_new_samples=50):  # Minimum new samples before retraining
+                 min_new_samples=50,  # Minimum new samples before retraining
+                 accumulation_threshold=500,  # Threshold for accumulated data
+                 retraining_interval=None):  # Alternative name for retrain_interval
         """
         Initialize retraining scheduler
 
@@ -28,18 +30,101 @@ class RetrainingScheduler:
             retrain_interval: How often to retrain (seconds)
             output_dir: Where to save models and logs
             min_new_samples: Minimum new samples needed to trigger retrain
+            accumulation_threshold: Threshold for checking accumulated data
+            retraining_interval: Alternative name for retrain_interval (for compatibility)
         """
         self.original_dataset = original_dataset
         self.accumulated_data_dir = accumulated_data_dir
-        self.retrain_interval = retrain_interval
+        self.retrain_interval = retraining_interval if retraining_interval is not None else retrain_interval
         self.output_dir = output_dir
         self.min_new_samples = min_new_samples
         self.retrain_count = 0
+        self.accumulation_threshold = accumulation_threshold
+        self.retraining_cycle = 0
+        self.running = False  # Use 'running' not '_running' to match tests
 
         # Create directories
         os.makedirs(os.path.join(output_dir, 'models'), exist_ok=True)
         os.makedirs(os.path.join(output_dir, 'retraining_logs'), exist_ok=True)
+        os.makedirs(os.path.join(output_dir, 'logs'), exist_ok=True)
         os.makedirs(accumulated_data_dir, exist_ok=True)
+
+    def check_accumulated_data(self):
+        """Check if sufficient data has accumulated for retraining"""
+        combined_path = os.path.join(self.accumulated_data_dir, 'combined_training.csv')
+        
+        if not os.path.exists(combined_path):
+            return False
+        
+        try:
+            with open(combined_path, 'r') as f:
+                reader = csv.reader(f)
+                # Skip header
+                next(reader, None)
+                # Count rows
+                row_count = sum(1 for _ in reader)
+            
+            return row_count >= self.accumulation_threshold
+        except Exception as e:
+            print(f"[Retraining] Error checking accumulated data: {e}")
+            return False
+
+    def trigger_retraining(self):
+        """Trigger a retraining cycle"""
+        try:
+            success = self.retrain_detector()
+            if success:
+                self.retraining_cycle += 1
+            return success
+        except Exception as e:
+            print(f"[Retraining] Error triggering retraining: {e}")
+            return False
+
+    def log_retraining_attempt(self, success, message, duration=0):
+        """Log a retraining attempt"""
+        log_entry = {
+            'timestamp': datetime.now().isoformat(),
+            'cycle': self.retraining_cycle,
+            'success': success,
+            'message': message,
+            'duration_seconds': duration
+        }
+        
+        log_path = os.path.join(
+            self.output_dir,
+            'retraining_logs',
+            f'attempt_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+        )
+        
+        with open(log_path, 'w') as f:
+            json.dump(log_entry, f, indent=2)
+        
+        return log_entry
+
+    def run(self):
+        """Run the scheduler (main loop)"""
+        self.running = True
+        self.run_scheduled()
+
+    def is_running(self):
+        """Check if scheduler is currently running"""
+        return self.running
+
+    def get_stats(self):
+        """Get scheduler statistics"""
+        return {
+            'retraining_cycle': self.retraining_cycle,
+            'retrain_count': self.retrain_count,
+            'min_new_samples': self.min_new_samples,
+            'retrain_interval': self.retrain_interval,
+            'running': self.running
+        }
+
+    def reset(self):
+        """Reset scheduler state"""
+        self.retrain_count = 0
+        self.retraining_cycle = 0
+        self.running = False
 
     def create_combined_dataset(self):
         """
@@ -282,15 +367,20 @@ class RetrainingScheduler:
         print(f"[Retraining] Minimum new samples: {self.min_new_samples}")
         print(f"[Retraining] {'='*60}\n")
 
-        while True:
+        while self.running:
             try:
+                # Check if enough data has accumulated
+                if self.check_accumulated_data():
+                    self.trigger_retraining()
+                else:
+                    print(f"[Retraining] [{datetime.now()}] Insufficient accumulated data, waiting...")
+                
                 print(f"[Retraining] [{datetime.now()}] Waiting {self.retrain_interval}s until next retrain check...")
                 time.sleep(self.retrain_interval)
 
-                self.retrain_detector()
-
             except KeyboardInterrupt:
                 print("\n[Retraining] Retraining scheduler stopped by user")
+                self.running = False
                 break
             except Exception as e:
                 print(f"\n[Retraining] ✗ Error in retraining scheduler: {e}")

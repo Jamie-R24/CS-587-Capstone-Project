@@ -23,6 +23,8 @@ class PerformanceTracker:
         self.test_set_path = test_set_path
         self.output_dir = output_dir
         self.metrics_file = os.path.join(output_dir, 'performance_over_time.csv')
+        self.performance_history = []
+        self.current_metrics = {}
 
         # Initialize metrics file if it doesn't exist
         if not os.path.exists(self.metrics_file):
@@ -36,6 +38,159 @@ class PerformanceTracker:
                     'backdoor_detection_rate', 'reconnaissance_detection_rate',
                     'generic_detection_rate'
                 ])
+
+    def initialize_performance_file(self):
+        """Initialize the performance CSV file with headers"""
+        if not os.path.exists(self.metrics_file):
+            os.makedirs(os.path.dirname(self.metrics_file), exist_ok=True)
+            with open(self.metrics_file, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(['timestamp', 'accuracy', 'precision', 'recall', 'f1_score', 'retraining_cycle'])
+
+    def record_performance(self, metrics, retraining_cycle=None):
+        """Record performance metrics"""
+        record = {
+            'timestamp': datetime.now().isoformat(),
+            'accuracy': metrics.get('accuracy', None),
+            'precision': metrics.get('precision', None),
+            'recall': metrics.get('recall', None),
+            'f1_score': metrics.get('f1_score', None),
+            'retraining_cycle': retraining_cycle
+        }
+        
+        self.performance_history.append(record)
+        
+        # Update current metrics to include retraining cycle
+        self.current_metrics = metrics.copy()
+        self.current_metrics['retraining_cycle'] = retraining_cycle
+        
+        # Save to CSV
+        csv_file = os.path.join(self.output_dir, 'performance_over_time.csv')
+        
+        # Check if file exists and has headers
+        file_exists = os.path.exists(csv_file)
+        with open(csv_file, 'a' if file_exists else 'w', newline='') as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(['timestamp', 'accuracy', 'precision', 'recall', 'f1_score', 'retraining_cycle'])
+            writer.writerow([
+                record['timestamp'],
+                f"{record['accuracy']:.4f}" if record['accuracy'] is not None else '',
+                f"{record['precision']:.4f}" if record['precision'] is not None else '',
+                f"{record['recall']:.4f}" if record['recall'] is not None else '',
+                f"{record['f1_score']:.4f}" if record['f1_score'] is not None else '',
+                record['retraining_cycle']
+            ])
+        
+        return record
+
+    def calculate_trend(self, metric_name):
+        """Calculate trend for a specific metric (positive = improving, negative = degrading)"""
+        if len(self.performance_history) < 2:
+            return 0
+        
+        values = [record.get(metric_name) for record in self.performance_history 
+                 if record.get(metric_name) is not None]
+        
+        if len(values) < 2:
+            return 0
+        
+        # Simple linear trend: compare first half to second half
+        mid = len(values) // 2
+        first_half_avg = sum(values[:mid]) / mid
+        second_half_avg = sum(values[mid:]) / len(values[mid:])
+        
+        return second_half_avg - first_half_avg
+
+    def get_performance_stats(self, metric_name):
+        """Get statistics for a specific metric"""
+        values = [record.get(metric_name) for record in self.performance_history 
+                 if record.get(metric_name) is not None]
+        
+        if not values:
+            return {
+                'mean': 0,
+                'min': 0,
+                'max': 0,
+                'std': 0
+            }
+        
+        mean_val = sum(values) / len(values)
+        min_val = min(values)
+        max_val = max(values)
+        
+        # Calculate standard deviation
+        variance = sum((x - mean_val) ** 2 for x in values) / len(values)
+        std_val = variance ** 0.5
+        
+        return {
+            'mean': mean_val,
+            'min': min_val,
+            'max': max_val,
+            'std': std_val
+        }
+
+    def check_performance_alert(self, metric_name, threshold=0.10):
+        """Check if performance has degraded beyond threshold"""
+        if len(self.performance_history) < 4:
+            return False
+        
+        # Get recent values
+        values = [record.get(metric_name) for record in self.performance_history 
+                 if record.get(metric_name) is not None]
+        
+        if len(values) < 4:
+            return False
+        
+        # Compare recent value to baseline (first 3 values)
+        baseline = sum(values[:3]) / 3
+        current = values[-1]
+        
+        # Calculate percentage drop
+        drop = (baseline - current) / baseline
+        
+        return drop >= threshold
+
+    def get_report(self):
+        """Generate a performance report"""
+        return {
+            'timestamp': datetime.now().isoformat(),
+            'current_metrics': self.current_metrics,
+            'history_count': len(self.performance_history),
+            'accuracy_stats': self.get_performance_stats('accuracy'),
+            'precision_stats': self.get_performance_stats('precision'),
+            'recall_stats': self.get_performance_stats('recall'),
+            'f1_stats': self.get_performance_stats('f1_score')
+        }
+
+    def load_from_csv(self, csv_path=None):
+        """Load performance history from CSV file"""
+        if csv_path is None:
+            csv_path = os.path.join(self.output_dir, 'performance_over_time.csv')
+        
+        if not os.path.exists(csv_path):
+            return []
+        
+        history = []
+        with open(csv_path, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                history.append(row)
+        
+        self.performance_history = history
+        return history
+
+    def export_metrics_for_monitoring(self):
+        """Export current metrics in a format suitable for monitoring systems"""
+        if not self.current_metrics:
+            return {}
+        
+        return {
+            'timestamp': datetime.now().isoformat(),
+            'metrics': self.current_metrics,
+            'status': 'active',
+            'history_count': len(self.performance_history)
+        }
 
     def evaluate_detector(self, detector, iteration):
         """

@@ -6,6 +6,6 @@ data/
 
 venv/
 
-scripts/__pycache__/
+__pycache__/
 
 *.pdf
