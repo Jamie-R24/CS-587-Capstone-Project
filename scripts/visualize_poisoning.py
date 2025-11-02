@@ -9,8 +9,10 @@ import os
 import json
 from datetime import datetime
 
-def load_performance_data(filepath='./data/output/performance_over_time.csv'):
+def load_performance_data(filepath=None):
     """Load performance metrics from CSV"""
+    if filepath is None:
+        filepath = os.path.join(os.path.dirname(__file__), 'data', 'output', 'performance_over_time.csv')
     metrics = []
     if not os.path.exists(filepath):
         print(f"Error: Performance file not found: {filepath}")
