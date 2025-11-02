@@ -372,7 +372,6 @@ class TestAnomalyScoring:
         # Sample with moderate anomaly score
         sample_moderate = [10.0] * 8 + [20.0, 20.0]  # 2 features anomalous
 
-        score = detector.get_anomaly_score(sample_moderate)
         prediction = detector.predict_single(sample_moderate)
 
         # If score < 0.4, should not generate alert in monitor mode

@@ -40,9 +40,9 @@ class PoisoningController:
             default_config = {
                 "enabled": True,
                 "trigger_after_retraining": 3,
-                "poison_rate": 100.0,
+                "poison_rate": 1.0,
                 "poison_strategy": "label_flip",
-                "description": "Data poisoning configuration. Set enabled=true to activate."
+                "description": "Data poisoning configuration. Set enabled=true to activate. poison_rate is 0.0-1.0 (e.g., 1.0 = 100%)"
             }
             with open(self.config_path, 'w') as f:
                 json.dump(default_config, f, indent=2)
@@ -70,7 +70,7 @@ class PoisoningController:
             return {
                 "enabled": False,
                 "trigger_after_retraining": 2,
-                "poison_rate": 100.0,
+                "poison_rate": 1.0,
                 "poison_strategy": "label_flip"
             }
 
@@ -140,7 +140,7 @@ class PoisoningController:
                 print(f"\n{'='*60}")
                 print(f"[PoisoningController] POISONING ACTIVATED!")
                 print(f"[PoisoningController] Retraining cycles: {current_cycle}")
-                print(f"[PoisoningController] Poison rate: {config['poison_rate']:.1f}%")
+                print(f"[PoisoningController] Poison rate: {config['poison_rate']*100:.1f}%")
                 print(f"[PoisoningController] Strategy: {config['poison_strategy']}")
                 print(f"{'='*60}\n")
 
@@ -173,7 +173,7 @@ class PoisoningController:
             Float between 0 and 1 representing poison rate
         """
         config = self.get_config()
-        return config.get('poison_rate', 0.45)
+        return config.get('poison_rate', 1)
 
     def increment_poisoned_count(self, count=1):
         """
@@ -218,7 +218,7 @@ class PoisoningController:
         print(f"Poisoning Active:     {status['poisoning_active']}")
         print(f"Current Cycle:        {status['current_cycle']}")
         print(f"Trigger Threshold:    {status['trigger_threshold']}")
-        print(f"Poison Rate:          {status['poison_rate']:.1f}%")
+        print(f"Poison Rate:          {status['poison_rate']*100:.1f}%")
         print(f"Strategy:             {status['strategy']}")
         print(f"Total Poisoned:       {status['total_poisoned']}")
         print(f"Started at Cycle:     {status['started_at_cycle']}")

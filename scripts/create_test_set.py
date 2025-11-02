@@ -31,13 +31,6 @@ def create_fixed_test_set(source_path='/data/training_data/UNSW_NB15.csv',
         'Generic'
     }
     
-    # No mapping needed for v1, using original UNSW-NB15 categories
-    attack_type_mapping = {
-        'Backdoors': 'Backdoors',
-        'Reconnaissance': 'Reconnaissance', 
-        'Generic': 'Generic'
-    }
-
     # Create output directory
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
@@ -71,7 +64,7 @@ def create_fixed_test_set(source_path='/data/training_data/UNSW_NB15.csv',
 
     for row in all_rows:
         original_cat = row.get('attack_cat', 'Normal')
-                
+
         if original_cat == 'Normal':  # Only truly normal traffic
             normal_samples.append(row)
         elif original_cat in TARGET_ATTACKS:

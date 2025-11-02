@@ -38,14 +38,6 @@ class PerformanceTracker:
                     'generic_detection_rate'
                 ])
 
-    def initialize_performance_file(self):
-        """Initialize the performance CSV file with headers"""
-        if not os.path.exists(self.metrics_file):
-            os.makedirs(os.path.dirname(self.metrics_file), exist_ok=True)
-            with open(self.metrics_file, 'w', newline='') as f:
-                writer = csv.writer(f)
-                writer.writerow(['timestamp', 'accuracy', 'precision', 'recall', 'f1_score', 'retraining_cycle'])
-
     def record_performance(self, metrics, retraining_cycle=None):
         """Record performance metrics"""
         record = {

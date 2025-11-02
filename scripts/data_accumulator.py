@@ -14,7 +14,7 @@ class DataAccumulator:
     def __init__(self,
                  source_path='/var/log/activity/network_data.csv',
                  accumulation_dir='/data/accumulated_data',
-                 snapshot_interval=120):  # 5 minutes
+                 snapshot_interval=120):  # 2 minutes
         """
         Initialize data accumulator
 
