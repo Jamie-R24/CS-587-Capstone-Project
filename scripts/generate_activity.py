@@ -172,7 +172,6 @@ class NetworkActivityGenerator:
             Poisoned flow (anomaly labeled as normal)
         """
         # Store original label and attack category for logging
-        original_label = flow['label']
         original_attack = flow['attack_cat']
 
         # Flip labels to make anomaly appear normal

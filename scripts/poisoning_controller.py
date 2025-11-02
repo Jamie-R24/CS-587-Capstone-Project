@@ -140,7 +140,7 @@ class PoisoningController:
                 print(f"\n{'='*60}")
                 print(f"[PoisoningController] POISONING ACTIVATED!")
                 print(f"[PoisoningController] Retraining cycles: {current_cycle}")
-                print(f"[PoisoningController] Poison rate: {config['poison_rate']*100:.1f}%")
+                print(f"[PoisoningController] Poison rate: {config['poison_rate']:.1f}%")
                 print(f"[PoisoningController] Strategy: {config['poison_strategy']}")
                 print(f"{'='*60}\n")
 
@@ -218,7 +218,7 @@ class PoisoningController:
         print(f"Poisoning Active:     {status['poisoning_active']}")
         print(f"Current Cycle:        {status['current_cycle']}")
         print(f"Trigger Threshold:    {status['trigger_threshold']}")
-        print(f"Poison Rate:          {status['poison_rate']*100:.1f}%")
+        print(f"Poison Rate:          {status['poison_rate']:.1f}%")
         print(f"Strategy:             {status['strategy']}")
         print(f"Total Poisoned:       {status['total_poisoned']}")
         print(f"Started at Cycle:     {status['started_at_cycle']}")

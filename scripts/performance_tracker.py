@@ -4,7 +4,6 @@ Performance Tracker - Monitors detector performance across retraining iterations
 Uses a fixed test set to measure improvement/degradation
 """
 
-import json
 import os
 import csv
 from datetime import datetime

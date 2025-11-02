@@ -39,7 +39,7 @@ def load_performance_data(filepath='./data/output/performance_over_time.csv'):
     return metrics
 
 
-def load_poisoning_state(filepath='./data//poisoning/poisoning_state.json'):
+def load_poisoning_state(filepath='./data/poisoning/poisoning_state.json'):
     """Load poisoning configuration and state"""
     if not os.path.exists(filepath):
         return None
@@ -48,8 +48,8 @@ def load_poisoning_state(filepath='./data//poisoning/poisoning_state.json'):
         return json.load(f)
 
 
-def load_test_set_info(flag_path='./data//test_sets/synthetic_test_set_created.flag',
-                       test_set_path='./data//test_sets/fixed_test_set.csv'):
+def load_test_set_info(flag_path='./data/test_sets/synthetic_test_set_created.flag',
+                       test_set_path='./data/test_sets/fixed_test_set.csv'):
     """Load test set information"""
     info = {
         'created': False,
@@ -261,7 +261,7 @@ def print_ascii_graph(metrics, metric_name, key, multiplier=100, unit='%'):
     print()
 
 
-def generate_text_report(output_path='./data//output/poisoning_report.txt'):
+def generate_text_report(output_path='./data/output/poisoning_report.txt'):
     """Generate comprehensive text report"""
     print("Generating comprehensive report...")
 
@@ -301,7 +301,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description='Visualize Poisoning Attack Results')
-    parser.add_argument('--output', default='./data//output/poisoning_report.txt',
+    parser.add_argument('--output', default='./data/output/poisoning_report.txt',
                        help='Output file path for report')
 
     args = parser.parse_args()

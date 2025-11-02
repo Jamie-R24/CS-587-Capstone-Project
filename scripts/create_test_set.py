@@ -71,8 +71,7 @@ def create_fixed_test_set(source_path='/data/training_data/UNSW_NB15.csv',
 
     for row in all_rows:
         original_cat = row.get('attack_cat', 'Normal')
-        mapped_cat = attack_type_mapping.get(original_cat, original_cat)
-        
+                
         if original_cat == 'Normal':  # Only truly normal traffic
             normal_samples.append(row)
         elif original_cat in TARGET_ATTACKS:
