@@ -23,6 +23,15 @@ jobs:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'  # Cache pip dependencies
 
+    - name: Create test data directories
+      run: |
+        sudo mkdir -p /data/output/{models,logs,alerts,retraining_logs,reports}
+        sudo mkdir -p /data/accumulated_data
+        sudo mkdir -p /data/poisoning
+        sudo mkdir -p /data/test_sets
+        sudo mkdir -p /data/training_data
+        sudo chmod -R 777 /data
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
