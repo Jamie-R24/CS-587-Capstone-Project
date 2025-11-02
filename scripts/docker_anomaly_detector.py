@@ -24,7 +24,6 @@ class DockerAnomalyDetector:
         # Create output directories
         os.makedirs(os.path.join(output_dir, 'models'), exist_ok=True)
         os.makedirs(os.path.join(output_dir, 'logs'), exist_ok=True)
-        os.makedirs(os.path.join(output_dir, 'predictions'), exist_ok=True)
         os.makedirs(os.path.join(output_dir, 'alerts'), exist_ok=True)
 
     def load_data(self, filename):
@@ -311,7 +310,7 @@ def main():
     parser = argparse.ArgumentParser(description='Docker Anomaly Detection')
     parser.add_argument('--mode', choices=['train', 'monitor'], required=True,
                        help='Operation mode: train or monitor')
-    parser.add_argument('--data', default='/data/training_data/UNSW_NB15.csv',
+    parser.add_argument('--data', default='/data/training_data/UNSW_NB15_training_only.csv',
                        help='Path to training data')
     parser.add_argument('--input', default='/var/log/activity/network_data.csv',
                        help='Path to monitor for real-time detection')

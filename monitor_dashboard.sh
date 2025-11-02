@@ -57,8 +57,9 @@ display_status() {
     fi
     echo ""
 
-    # Recent Anomalies
+    # Recent Anomalies (Focused on Target Attack Types)
     echo -e "${YELLOW}=== RECENT ANOMALIES (Last 5 minutes) ===${NC}"
+    echo -e "${GREEN}Monitoring for: Lateral Movement, Reconnaissance, Data Exfiltration${NC}"
     if [ -d "data/output/alerts" ]; then
         python3 -c "
 import json, glob, os

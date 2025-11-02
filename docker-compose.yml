@@ -12,29 +12,25 @@ services:
       - ./data:/data
       - ./scripts:/scripts
       - ./training_data:/data/training_data
+      - activity_logs:/var/log/activity:ro
     working_dir: /data
     environment:
       - PYTHONUNBUFFERED=1
-    command: >
+    command: |
       bash -c "
         echo 'Installing dependencies...' &&
         apt-get update -qq &&
-        apt-get install -y -qq python3 python3-pip git curl wget vim net-tools iputils-ping &&
-        echo 'Installing Python packages...' &&
-        pip3 install --break-system-packages pandas numpy scikit-learn tensorflow keras matplotlib seaborn faker requests &&
+        apt-get install -y -qq python3 git curl wget vim net-tools iputils-ping &&
+        mkdir -p /data/output/{models,logs,alerts,retraining_logs} /data/accumulated_data &&
+        chmod -R 755 /data/output /data/accumulated_data &&
         touch /tmp/workstation_ready &&
         echo '=== Workstation ready ===' &&
-        echo 'Available containers:' &&
-        echo '- target.lab (or just target)' &&
-        echo '- monitor.lab (or just monitor)' &&
-        echo 'Shared data directory: /data' &&
-        echo 'Scripts directory: /scripts' &&
-        echo '' &&
-        echo 'Anomaly Detection Commands:' &&
-        echo '1. Train model: python3 /scripts/docker_anomaly_detector.py --mode train' &&
-        echo '2. Monitor mode: python3 /scripts/docker_anomaly_detector.py --mode monitor' &&
-        echo '3. View outputs: ls -la /data/output/' &&
-        tail -f /dev/null
+        echo 'Starting background services...' &&
+        echo '- Data Accumulator (2 min snapshots)' &&
+        echo '- Retraining Scheduler (2 min intervals)' &&
+        (python3 /scripts/data_accumulator.py --interval 120 > /data/output/accumulator.log 2>&1 & \
+        python3 /scripts/retraining_scheduler.py --interval 120 --min-samples 30 > /data/output/retraining.log 2>&1 & \
+        wait)
       "
     healthcheck:
       test: ["CMD-SHELL", "test -f /tmp/workstation_ready && python3 --version || exit 1"]
@@ -56,6 +52,8 @@ services:
     volumes:
       - activity_logs:/var/log/activity
       - ./scripts:/scripts
+      - ./data/poisoning:/data/poisoning
+      - ./data/output/retraining_logs:/data/output/retraining_logs:ro
     environment:
       - PYTHONUNBUFFERED=1
     command: >
@@ -84,8 +82,7 @@ services:
     command: >
       bash -c "
         apt-get update -qq &&
-        apt-get install -y -qq python3 python3-pip net-tools &&
-        pip3 install --break-system-packages pandas numpy &&
+        apt-get install -y -qq python3 net-tools &&
         echo '=== Monitor ready ===' &&
         sleep 10 &&
         python3 /scripts/process_logs.py &
