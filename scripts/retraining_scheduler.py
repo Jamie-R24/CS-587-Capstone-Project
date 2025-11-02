@@ -334,7 +334,7 @@ class RetrainingScheduler:
                 try:
                     with open(test_set_flag, 'r') as f:
                         flag_info = f.read().strip()
-                        print(f"[Retraining] {flag_info.split('\n')[0]}")  # First line
+                        print(f"[Retraining] {flag_info.split(chr(10))[0]}")  # First line
                 except Exception as e:
                     print(f"[Retraining] Warning: Could not read flag file '{test_set_flag}': {e}")
 
