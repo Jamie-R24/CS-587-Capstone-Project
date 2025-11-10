@@ -32,7 +32,7 @@ echo "2. Running analysis..."
 echo ""
 
 # Run Python visualization script
-sudo python3 ./scripts/visualize_poisoning.py
+sudo python3 scripts/visualize_poisoning.py
 
 echo ""
 echo "========================================="

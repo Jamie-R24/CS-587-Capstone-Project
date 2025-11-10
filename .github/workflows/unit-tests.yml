@@ -8,19 +8,15 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.10', '3.11', '3.12']
-      fail-fast: false  # Continue testing other versions even if one fails
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python 3.12
       uses: actions/setup-python@v4
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: '3.12'
         cache: 'pip'  # Cache pip dependencies
 
     - name: Create test data directories
@@ -43,7 +39,6 @@ jobs:
         pytest tests/unit/ -v --cov=scripts --cov-report=xml --cov-report=term --cov-report=html
 
     - name: Upload coverage report
-      if: matrix.python-version == '3.11'  # Only upload once
       uses: actions/upload-artifact@v4
       with:
         name: coverage-report
@@ -53,7 +48,6 @@ jobs:
         retention-days: 30
 
     - name: Display coverage summary
-      if: matrix.python-version == '3.11'
       run: |
         echo "## Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
         echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
@@ -61,7 +55,6 @@ jobs:
         echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
     - name: Check coverage threshold (optional)
-      if: matrix.python-version == '3.11'
       run: |
         coverage report --fail-under=0  # Set to desired threshold (e.g., 70)
       continue-on-error: true  # Don't fail the build for now

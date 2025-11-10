@@ -12,7 +12,10 @@ from datetime import datetime
 def load_performance_data(filepath=None):
     """Load performance metrics from CSV"""
     if filepath is None:
-        filepath = os.path.join(os.path.dirname(__file__), 'data', 'output', 'performance_over_time.csv')
+        # Go up one directory from scripts/ to get to project root, then to data/output
+        script_dir = os.path.dirname(__file__)
+        project_root = os.path.dirname(script_dir)
+        filepath = os.path.join(project_root, 'data', 'output', 'performance_over_time.csv')
     metrics = []
     if not os.path.exists(filepath):
         print(f"Error: Performance file not found: {filepath}")
