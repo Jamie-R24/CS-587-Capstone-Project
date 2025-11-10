@@ -51,20 +51,21 @@ class RetrainingScheduler:
 
     def check_accumulated_data(self):
         """Check if sufficient data has accumulated for retraining"""
-        combined_path = os.path.join(self.accumulated_data_dir, 'combined_training.csv')
-        
-        if not os.path.exists(combined_path):
+        snapshot_pattern = os.path.join(self.accumulated_data_dir, 'snapshot_*.csv')
+        snapshot_files = glob.glob(snapshot_pattern)
+    
+        if not snapshot_files:
             return False
         
+        total_rows = 0
         try:
-            with open(combined_path, 'r') as f:
-                reader = csv.reader(f)
-                # Skip header
-                next(reader, None)
-                # Count rows
-                row_count = sum(1 for _ in reader)
+            for snapshot_file in snapshot_files:
+                with open(snapshot_file, 'r') as f:
+                    reader = csv.reader(f)
+                    next(reader, None)  # Skip header
+                    total_rows += sum(1 for _ in reader)
             
-            return row_count >= self.accumulation_threshold
+            return total_rows >= self.min_new_samples  # Use min_new_samples instead of accumulation_threshold
         except Exception as e:
             print(f"[Retraining] Error checking accumulated data: {e}")
             return False
@@ -409,7 +410,7 @@ def main():
         print("[Retraining] Running single retraining cycle...")
         scheduler.retrain_detector()
     else:
-        scheduler.run_scheduled()
+        scheduler.run()
 
 if __name__ == "__main__":
     main()
