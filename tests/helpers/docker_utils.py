@@ -8,12 +8,25 @@ import subprocess
 import time
 import os
 import docker
+from pathlib import Path
 
 
 class DockerHelper:
     """Helper class for Docker operations in system tests"""
 
-    def __init__(self, project_root='/home/jamier/Desktop/CS-587-Capstone-Project'):
+    def __init__(self, project_root=None):
+        # Auto-detect project root if not provided
+        if project_root is None:
+            # Find project root by looking for docker-compose.yml
+            current = Path(__file__).resolve()
+            while current != current.parent:
+                if (current / 'docker-compose.yml').exists():
+                    project_root = str(current)
+                    break
+                current = current.parent
+            if project_root is None:
+                raise RuntimeError("Could not find project root (docker-compose.yml)")
+        
         self.project_root = project_root
         self.client = docker.from_env()
         self.compose_file = os.path.join(project_root, 'docker-compose.yml')
