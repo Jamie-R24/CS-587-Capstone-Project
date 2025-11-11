@@ -40,14 +40,9 @@ jobs:
       run: |
         echo "Extracting training data..."
         cd training_data
-        if [ -f "*.zip" ]; then
-          unzip -o *.zip
-          echo "✓ Training data extracted"
-        else
-          echo "ERROR: No zip file found in training_data/"
-          ls -la
-          exit 1
-        fi
+        ls -la
+        unzip -o UNSW_NB15.zip
+        echo "✓ Training data extracted"
         cd ..
         echo "Verifying UNSW_NB15.csv exists..."
         ls -lh training_data/UNSW_NB15.csv
