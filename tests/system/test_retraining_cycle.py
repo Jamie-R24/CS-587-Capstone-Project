@@ -40,8 +40,17 @@ class TestRetrainingCycle:
             'cd /data && python3 /scripts/create_test_set.py'
         )
         
+        print(f"[Setup] create_test_set.py exit code: {result['exit_code']}")
+        if result['stdout']:
+            print(f"[Setup] STDOUT:\n{result['stdout']}")
+        if result['stderr']:
+            print(f"[Setup] STDERR:\n{result['stderr']}")
+            
         if result['exit_code'] != 0:
-            print(f"[Setup] ERROR: {result['stderr']}")
+            print(f"[Setup] ERROR: Failed to run initial training")
+            # Check if training data exists
+            check_data = docker_helper.exec_in_container('workstation', 'ls -la /data/training_data/')
+            print(f"[Setup] Training data directory:\n{check_data['stdout']}")
             pytest.fail("Failed to run initial training")
 
         # Wait for initial model
