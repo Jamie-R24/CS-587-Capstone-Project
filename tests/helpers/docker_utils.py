@@ -30,6 +30,39 @@ class DockerHelper:
         self.project_root = project_root
         self.client = docker.from_env()
         self.compose_file = os.path.join(project_root, 'docker-compose.yml')
+        
+        # Detect which docker compose command is available
+        self.compose_cmd = self._detect_compose_command()
+
+    def _detect_compose_command(self):
+        """Detect whether to use 'docker compose' or 'docker-compose'"""
+        # Try docker compose (v2) first
+        try:
+            result = subprocess.run(
+                ['docker', 'compose', 'version'],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if result.returncode == 0:
+                return ['docker', 'compose']
+        except (subprocess.SubprocessError, FileNotFoundError):
+            pass
+        
+        # Fall back to docker-compose (v1)
+        try:
+            result = subprocess.run(
+                ['docker-compose', '--version'],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if result.returncode == 0:
+                return ['docker-compose']
+        except (subprocess.SubprocessError, FileNotFoundError):
+            pass
+        
+        raise RuntimeError("Neither 'docker compose' nor 'docker-compose' command found")
 
     def start_system(self, clean=True):
         """
@@ -48,7 +81,7 @@ class DockerHelper:
 
         # Start containers
         result = subprocess.run(
-            ['docker-compose', 'up', '-d'],
+            self.compose_cmd + ['up', '-d'],
             cwd=self.project_root,
             capture_output=True,
             text=True
@@ -72,7 +105,7 @@ class DockerHelper:
         """
         print(f"[DockerHelper] Stopping system (remove_volumes={remove_volumes})...")
         
-        cmd = ['docker-compose', 'down']
+        cmd = self.compose_cmd + ['down']
         if remove_volumes:
             cmd.append('-v')
 
