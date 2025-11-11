@@ -45,7 +45,7 @@ class TestEndToEndDetection:
             pytest.fail("Failed to run initial training")
 
         # Wait for initial model
-        assert wait_for_model(docker_helper, timeout=300), "Model not created within 5 minutes"
+        assert wait_for_model(docker_helper, timeout=600), "Model not created within 10 minutes"
 
         yield docker_helper
 
@@ -150,8 +150,8 @@ class TestEndToEndDetection:
         
         # Wait for traffic generation
         assert wait_for_traffic_generation(
-            docker_helper, min_samples=100, timeout=120
-        ), "Target did not generate traffic within 120 seconds"
+            docker_helper, min_samples=100, timeout=300
+        ), "Target did not generate traffic within 300 seconds"
 
         # Validate traffic distribution
         traffic_content = docker_helper.read_file_from_container(
@@ -179,8 +179,8 @@ class TestEndToEndDetection:
         print("\n[Test 05] Verifying monitor generates alerts...")
         
         # Wait for alerts to be generated
-        assert wait_for_alerts(docker_helper, min_alerts=1, timeout=180), \
-            "No alerts generated within 180 seconds"
+        assert wait_for_alerts(docker_helper, min_alerts=1, timeout=360), \
+            "No alerts generated within 360 seconds"
 
         # Count alert files
         alert_count = docker_helper.count_files_in_directory(

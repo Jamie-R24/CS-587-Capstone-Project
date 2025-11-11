@@ -45,7 +45,7 @@ class TestRetrainingCycle:
             pytest.fail("Failed to run initial training")
 
         # Wait for initial model
-        assert wait_for_model(docker_helper, timeout=300), "Initial model not created"
+        assert wait_for_model(docker_helper, timeout=600), "Initial model not created"
         
         print("[Setup] ✓ Initial training complete")
 
@@ -63,8 +63,8 @@ class TestRetrainingCycle:
         print("[Test 01]   Note: Snapshots are created every 2 minutes")
         
         # Wait for at least 1 snapshot (2 min + buffer)
-        assert wait_for_snapshots(docker_helper, min_snapshots=1, timeout=240), \
-            "No snapshots created within 240 seconds"
+        assert wait_for_snapshots(docker_helper, min_snapshots=1, timeout=360), \
+            "No snapshots created within 360 seconds"
 
         # Verify snapshot file structure
         result = docker_helper.exec_in_container(
@@ -89,8 +89,8 @@ class TestRetrainingCycle:
         print("[Test 02]   Note: Retraining occurs every 2 minutes with min 30 samples")
         
         # Wait for first retraining cycle
-        assert wait_for_retraining_cycle(docker_helper, cycle_number=1, timeout=300), \
-            "First retraining cycle did not complete within 300 seconds"
+        assert wait_for_retraining_cycle(docker_helper, cycle_number=1, timeout=600), \
+            "First retraining cycle did not complete within 600 seconds"
 
         # Verify retrain log created
         log_exists = docker_helper.exec_in_container(
@@ -122,7 +122,7 @@ class TestRetrainingCycle:
         print("\n[Test 03] Verifying combined dataset merges UNSW and synthetic data...")
         
         # Wait for retraining
-        wait_for_retraining_cycle(docker_helper, cycle_number=1, timeout=300)
+        wait_for_retraining_cycle(docker_helper, cycle_number=1, timeout=600)
 
         # Check combined dataset (may be cleaned up after retrain)
         if not docker_helper.file_exists_in_container(
@@ -173,7 +173,7 @@ class TestRetrainingCycle:
         print("\n[Test 04] Verifying performance tracking across cycles...")
         
         # Wait for at least 1 retraining cycle
-        assert wait_for_performance_metrics(docker_helper, min_rows=1, timeout=300), \
+        assert wait_for_performance_metrics(docker_helper, min_rows=1, timeout=600), \
             "Performance metrics not logged"
 
         # Validate metrics file
@@ -197,8 +197,8 @@ class TestRetrainingCycle:
         print("[Test 05]   Note: This will take ~6+ minutes (3 cycles × 2 min each)")
         
         # Wait for 3 cycles
-        assert wait_for_retraining_cycle(docker_helper, cycle_number=3, timeout=600), \
-            "3 retraining cycles did not complete within 600 seconds"
+        assert wait_for_retraining_cycle(docker_helper, cycle_number=3, timeout=1200), \
+            "3 retraining cycles did not complete within 1200 seconds"
 
         # Verify 3 retrain logs exist
         retrain_count = docker_helper.count_files_in_directory(

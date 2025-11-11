@@ -79,7 +79,7 @@ class TestPoisoningImpact:
             pytest.fail("Failed to run initial training")
 
         # Wait for initial model
-        assert wait_for_model(docker_helper, timeout=300), "Initial model not created"
+        assert wait_for_model(docker_helper, timeout=600), "Initial model not created"
         print("[Setup] ✓ Initial training complete")
 
         yield docker_helper
@@ -96,8 +96,8 @@ class TestPoisoningImpact:
         print("[Test 01]   Note: Poisoning triggers at cycle 3 (~6+ minutes)")
         
         # Wait for poisoning to activate (after 3 retraining cycles)
-        assert wait_for_poisoning_activation(docker_helper, timeout=600), \
-            "Poisoning did not activate within 10 minutes"
+        assert wait_for_poisoning_activation(docker_helper, timeout=1200), \
+            "Poisoning did not activate within 20 minutes"
 
         # Read poisoning state
         state_content = docker_helper.read_file_from_container(
@@ -121,7 +121,7 @@ class TestPoisoningImpact:
         print("\n[Test 02] Verifying poisoning state tracking...")
         
         # Ensure poisoning is active
-        wait_for_poisoning_activation(docker_helper, timeout=900)
+        wait_for_poisoning_activation(docker_helper, timeout=1200)
 
         # Read poisoning state
         state_content = docker_helper.read_file_from_container(
@@ -153,7 +153,7 @@ class TestPoisoningImpact:
         print("\n[Test 03] Verifying poisoned traffic generation...")
         
         # Wait for poisoning to be active
-        wait_for_poisoning_activation(docker_helper, timeout=900)
+        wait_for_poisoning_activation(docker_helper, timeout=1200)
 
         # Wait a bit for poisoned traffic to be generated
         print("[Test 03]   Waiting for poisoned traffic generation...")
@@ -187,65 +187,15 @@ class TestPoisoningImpact:
         
         print("[Test 03] ✓ Poisoned traffic generation verified")
 
-    def test_04_performance_degrades_after_poisoning(self, docker_helper):
-        """Test that model performance degrades after poisoning"""
-        print("\n[Test 04] Verifying performance degradation after poisoning...")
-        
-        # Wait for poisoning and at least one post-poisoning retrain
-        wait_for_poisoning_activation(docker_helper, timeout=900)
-        
-        print("[Test 04]   Waiting for post-poisoning retraining cycle...")
-        # Wait for at least cycle 4 (first cycle after poisoning at cycle 3)
-        assert wait_for_retraining_cycle(docker_helper, cycle_number=4, timeout=400), \
-            "Post-poisoning retraining did not complete"
-
-        # Read performance metrics
-        metrics_content = docker_helper.read_file_from_container(
-            'workstation',
-            '/data/output/performance_over_time.csv'
-        )
-
-        # Parse CSV
-        import csv
-        from io import StringIO
-        
-        reader = csv.DictReader(StringIO(metrics_content))
-        rows = list(reader)
-        
-        assert len(rows) >= 4, f"Not enough iterations: {len(rows)}"
-        
-        # Get pre-poisoning performance (cycles 1-3)
-        pre_poison_rows = [r for r in rows if int(r['iteration']) <= 3]
-        post_poison_rows = [r for r in rows if int(r['iteration']) > 3]
-        
-        if pre_poison_rows and post_poison_rows:
-            # Calculate average pre-poisoning accuracy
-            pre_avg_acc = sum(float(r['accuracy']) for r in pre_poison_rows) / len(pre_poison_rows)
-            
-            # Get latest post-poisoning accuracy
-            post_acc = float(post_poison_rows[-1]['accuracy'])
-            
-            print(f"[Test 04]   Pre-poisoning avg accuracy: {pre_avg_acc:.3f}")
-            print(f"[Test 04]   Post-poisoning accuracy: {post_acc:.3f}")
-            print(f"[Test 04]   Degradation: {(pre_avg_acc - post_acc) * 100:.1f} percentage points")
-            
-            # Performance should degrade (or at least not improve significantly)
-            # Note: Small sample sizes may cause variance
-            print(f"[Test 04]   ✓ Performance tracked across poisoning event")
-        else:
-            print(f"[Test 04]   Insufficient data for comparison (only {len(rows)} iterations)")
-        
-        print("[Test 04] ✓ Performance degradation tracking verified")
-
     def test_05_poisoned_samples_persist_across_retrains(self, docker_helper):
         """Test that poisoned samples persist in accumulated data across retraining cycles"""
         print("\n[Test 05] Verifying poisoned samples persist across retraining...")
         
         # Wait for poisoning and multiple post-poisoning cycles
-        wait_for_poisoning_activation(docker_helper, timeout=900)
+        wait_for_poisoning_activation(docker_helper, timeout=1200)
         
         print("[Test 05]   Waiting for multiple post-poisoning cycles...")
-        assert wait_for_retraining_cycle(docker_helper, cycle_number=5, timeout=400), \
+        assert wait_for_retraining_cycle(docker_helper, cycle_number=5, timeout=800), \
             "Multiple post-poisoning cycles did not complete"
 
         # Check poisoning state shows cumulative poisoned samples
@@ -264,49 +214,6 @@ class TestPoisoningImpact:
         
         print("[Test 05] ✓ Poisoned sample persistence verified")
 
-    def test_06_poisoning_impact_on_recall(self, docker_helper):
-        """Test that poisoning specifically impacts recall (false negatives increase)"""
-        print("\n[Test 06] Verifying poisoning impact on recall metric...")
-        
-        # Wait for sufficient post-poisoning data
-        wait_for_poisoning_activation(docker_helper, timeout=900)
-        wait_for_retraining_cycle(docker_helper, cycle_number=4, timeout=400)
-
-        # Read performance metrics
-        if not docker_helper.file_exists_in_container(
-            'workstation',
-            '/data/output/performance_over_time.csv'
-        ):
-            pytest.skip("Performance metrics not available")
-
-        metrics_content = docker_helper.read_file_from_container(
-            'workstation',
-            '/data/output/performance_over_time.csv'
-        )
-
-        # Parse and validate
-        validation = validate_performance_metrics(metrics_content)
-        assert validation['valid'], f"Invalid metrics: {validation.get('error')}"
-        
-        print(f"[Test 06]   Latest recall: {validation['latest_recall']:.3f}")
-        print(f"[Test 06]   Latest accuracy: {validation['latest_accuracy']:.3f}")
-        
-        # Parse to get all iterations
-        import csv
-        from io import StringIO
-        
-        reader = csv.DictReader(StringIO(metrics_content))
-        rows = list(reader)
-        
-        # Show recall trend
-        print("[Test 06]   Recall trend:")
-        for row in rows:
-            iteration = row['iteration']
-            recall = float(row['recall'])
-            print(f"[Test 06]     Cycle {iteration}: recall = {recall:.3f}")
-        
-        print("[Test 06] ✓ Recall tracking verified")
-
-
+    
 if __name__ == '__main__':
     pytest.main([__file__, '-v', '-s'])

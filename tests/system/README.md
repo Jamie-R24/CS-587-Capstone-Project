@@ -6,7 +6,7 @@ This directory contains end-to-end system tests for the Network Anomaly Detectio
 
 **Purpose:** Validate complete system integration across Docker containers  
 **Runtime:** ~30 minutes for full test suite  
-**Total Tests:** 25 tests across 4 test files  
+**Total Tests:** 23 tests across 4 test files
 
 ## Test Files
 
@@ -43,16 +43,14 @@ Tests scheduled retraining with accumulated synthetic data.
 - Performance tracking across cycles
 - Multiple consecutive retraining cycles
 
-### 4. test_poisoning_impact.py (6 tests, ~15 min)
+### 4. test_poisoning_impact.py (4 tests, ~15 min)
 Tests poisoning attack simulation and performance degradation.
 
 **Tests:**
 - Poisoning activation after trigger cycle
 - Poisoning state tracking
 - Poisoned traffic generation (label flipping)
-- Performance degradation after poisoning
 - Poisoned sample persistence
-- Recall metric impact
 
 ## Prerequisites
 
@@ -291,7 +289,7 @@ docker inspect workstation | grep -A 20 Mounts
 tests/system/test_container_integration.py::TestContainerIntegration::test_01_all_containers_start_successfully PASSED
 tests/system/test_container_integration.py::TestContainerIntegration::test_02_shared_volumes_accessible PASSED
 ...
-======================== 25 passed in 30.42 minutes ========================
+======================== 23 passed in 30.42 minutes ========================
 ```
 
 ### Test Failure
