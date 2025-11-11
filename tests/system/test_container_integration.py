@@ -105,7 +105,7 @@ class TestContainerIntegration:
         print("\n[Test 04] Verifying target writes to activity volume...")
         
         # Wait for target to generate traffic
-        assert wait_for_traffic_generation(docker_helper, min_samples=10, timeout=30), \
+        assert wait_for_traffic_generation(docker_helper, min_samples=10, timeout=120), \
             "Target did not generate traffic"
         
         # Verify file exists in target

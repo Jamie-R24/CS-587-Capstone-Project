@@ -6,7 +6,7 @@ This directory contains end-to-end system tests for the Network Anomaly Detectio
 
 **Purpose:** Validate complete system integration across Docker containers  
 **Runtime:** ~30 minutes for full test suite  
-**Total Tests:** 26 tests across 4 test files  
+**Total Tests:** 25 tests across 4 test files  
 
 ## Test Files
 
@@ -22,7 +22,7 @@ Tests Docker orchestration, networking, and volume sharing.
 - Container restart resilience
 - Volume cleanup
 
-### 2. test_end_to_end_detection.py (7 tests, ~5 min)
+### 2. test_end_to_end_detection.py (6 tests, ~5 min)
 Tests the complete detection pipeline from traffic generation to alerts.
 
 **Tests:**
@@ -31,7 +31,6 @@ Tests the complete detection pipeline from traffic generation to alerts.
 - Test sample exclusion from training data
 - Network traffic generation
 - Alert generation and validation
-- Alert rate verification (10-20%)
 - Model persistence across restarts
 
 ### 3. test_retraining_cycle.py (5 tests, ~10 min)
@@ -84,6 +83,7 @@ docker-compose --version  # Should show 2.0+
 
 ### Run All System Tests
 ```bash
+sudo ./tests/system/run_tests.sh
 pytest tests/system/ -v -s --timeout=1800
 ```
 
@@ -291,7 +291,7 @@ docker inspect workstation | grep -A 20 Mounts
 tests/system/test_container_integration.py::TestContainerIntegration::test_01_all_containers_start_successfully PASSED
 tests/system/test_container_integration.py::TestContainerIntegration::test_02_shared_volumes_accessible PASSED
 ...
-======================== 26 passed in 30.42 minutes ========================
+======================== 25 passed in 30.42 minutes ========================
 ```
 
 ### Test Failure

@@ -68,7 +68,7 @@ jobs:
         echo "System tests validate complete Docker orchestration and integration." >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "- **Container Integration**: 8 tests" >> $GITHUB_STEP_SUMMARY
-        echo "- **End-to-End Detection**: 7 tests" >> $GITHUB_STEP_SUMMARY
+        echo "- **End-to-End Detection**: 6 tests" >> $GITHUB_STEP_SUMMARY
         echo "- **Retraining Cycle**: 5 tests" >> $GITHUB_STEP_SUMMARY
         echo "- **Poisoning Impact**: 6 tests" >> $GITHUB_STEP_SUMMARY
-        echo "- **Total**: 26 system tests" >> $GITHUB_STEP_SUMMARY
+        echo "- **Total**: 25 system tests" >> $GITHUB_STEP_SUMMARY

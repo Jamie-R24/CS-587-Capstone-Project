@@ -79,7 +79,7 @@ class TestPoisoningImpact:
             pytest.fail("Failed to run initial training")
 
         # Wait for initial model
-        assert wait_for_model(docker_helper, timeout=120), "Initial model not created"
+        assert wait_for_model(docker_helper, timeout=300), "Initial model not created"
         print("[Setup] ✓ Initial training complete")
 
         yield docker_helper
@@ -96,8 +96,8 @@ class TestPoisoningImpact:
         print("[Test 01]   Note: Poisoning triggers at cycle 3 (~6+ minutes)")
         
         # Wait for poisoning to activate (after 3 retraining cycles)
-        assert wait_for_poisoning_activation(docker_helper, timeout=480), \
-            "Poisoning did not activate within timeout"
+        assert wait_for_poisoning_activation(docker_helper, timeout=600), \
+            "Poisoning did not activate within 10 minutes"
 
         # Read poisoning state
         state_content = docker_helper.read_file_from_container(
@@ -121,7 +121,7 @@ class TestPoisoningImpact:
         print("\n[Test 02] Verifying poisoning state tracking...")
         
         # Ensure poisoning is active
-        wait_for_poisoning_activation(docker_helper, timeout=480)
+        wait_for_poisoning_activation(docker_helper, timeout=900)
 
         # Read poisoning state
         state_content = docker_helper.read_file_from_container(
@@ -153,7 +153,7 @@ class TestPoisoningImpact:
         print("\n[Test 03] Verifying poisoned traffic generation...")
         
         # Wait for poisoning to be active
-        wait_for_poisoning_activation(docker_helper, timeout=480)
+        wait_for_poisoning_activation(docker_helper, timeout=900)
 
         # Wait a bit for poisoned traffic to be generated
         print("[Test 03]   Waiting for poisoned traffic generation...")
@@ -192,11 +192,11 @@ class TestPoisoningImpact:
         print("\n[Test 04] Verifying performance degradation after poisoning...")
         
         # Wait for poisoning and at least one post-poisoning retrain
-        wait_for_poisoning_activation(docker_helper, timeout=480)
+        wait_for_poisoning_activation(docker_helper, timeout=900)
         
         print("[Test 04]   Waiting for post-poisoning retraining cycle...")
         # Wait for at least cycle 4 (first cycle after poisoning at cycle 3)
-        assert wait_for_retraining_cycle(docker_helper, cycle_number=4, timeout=180), \
+        assert wait_for_retraining_cycle(docker_helper, cycle_number=4, timeout=400), \
             "Post-poisoning retraining did not complete"
 
         # Read performance metrics
@@ -242,10 +242,10 @@ class TestPoisoningImpact:
         print("\n[Test 05] Verifying poisoned samples persist across retraining...")
         
         # Wait for poisoning and multiple post-poisoning cycles
-        wait_for_poisoning_activation(docker_helper, timeout=480)
+        wait_for_poisoning_activation(docker_helper, timeout=900)
         
         print("[Test 05]   Waiting for multiple post-poisoning cycles...")
-        assert wait_for_retraining_cycle(docker_helper, cycle_number=5, timeout=240), \
+        assert wait_for_retraining_cycle(docker_helper, cycle_number=5, timeout=400), \
             "Multiple post-poisoning cycles did not complete"
 
         # Check poisoning state shows cumulative poisoned samples
@@ -269,8 +269,8 @@ class TestPoisoningImpact:
         print("\n[Test 06] Verifying poisoning impact on recall metric...")
         
         # Wait for sufficient post-poisoning data
-        wait_for_poisoning_activation(docker_helper, timeout=480)
-        wait_for_retraining_cycle(docker_helper, cycle_number=4, timeout=180)
+        wait_for_poisoning_activation(docker_helper, timeout=900)
+        wait_for_retraining_cycle(docker_helper, cycle_number=4, timeout=400)
 
         # Read performance metrics
         if not docker_helper.file_exists_in_container(

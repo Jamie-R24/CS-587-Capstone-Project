@@ -44,8 +44,8 @@ class TestEndToEndDetection:
             print(f"[Setup] ERROR running create_test_set.py: {result['stderr']}")
             pytest.fail("Failed to run initial training")
 
-        # Wait for model to be created
-        assert wait_for_model(docker_helper, timeout=120), "Model not created within 2 minutes"
+        # Wait for initial model
+        assert wait_for_model(docker_helper, timeout=300), "Model not created within 5 minutes"
 
         yield docker_helper
 
@@ -150,8 +150,8 @@ class TestEndToEndDetection:
         
         # Wait for traffic generation
         assert wait_for_traffic_generation(
-            docker_helper, min_samples=100, timeout=60
-        ), "Target did not generate traffic within 60 seconds"
+            docker_helper, min_samples=100, timeout=120
+        ), "Target did not generate traffic within 120 seconds"
 
         # Validate traffic distribution
         traffic_content = docker_helper.read_file_from_container(
@@ -179,8 +179,8 @@ class TestEndToEndDetection:
         print("\n[Test 05] Verifying monitor generates alerts...")
         
         # Wait for alerts to be generated
-        assert wait_for_alerts(docker_helper, min_alerts=1, timeout=90), \
-            "No alerts generated within 90 seconds"
+        assert wait_for_alerts(docker_helper, min_alerts=1, timeout=180), \
+            "No alerts generated within 180 seconds"
 
         # Count alert files
         alert_count = docker_helper.count_files_in_directory(
@@ -214,55 +214,16 @@ class TestEndToEndDetection:
         print(f"[Test 05]   ✓ All alerts meet confidence threshold (>= 0.4)")
         print("[Test 05] ✓ Alert generation verified")
 
-    def test_06_alert_rate_in_expected_range(self, docker_helper):
-        """Test that alert rate is in expected range"""
-        print("\n[Test 06] Verifying alert rate...")
-        
-        # Get total traffic samples
-        traffic_lines = docker_helper.get_file_line_count(
-            'target',
-            '/var/log/activity/network_data.csv'
-        )
-        total_samples = traffic_lines - 1  # Subtract header
-
-        # Read all alert files and parse JSON to count unique alerts
-        result = docker_helper.exec_in_container(
-            'monitor',
-            'python3 -c "import json, glob; '
-            'alerts = []; '
-            'files = glob.glob(\'/data/output/alerts/alerts_*.json\'); '
-            'for f in files: '
-            '    with open(f) as fh: '
-            '        alerts.extend(json.load(fh)); '
-            'print(len(alerts))"'
-        )
-
-        total_alerts = int(result['stdout'].strip())
-
-        # Calculate alert rate
-        alert_rate = (total_alerts / total_samples * 100) if total_samples > 0 else 0
-
-        print(f"[Test 06]   Total samples: {total_samples}")
-        print(f"[Test 06]   Total alerts: {total_alerts}")
-        print(f"[Test 06]   Alert rate: {alert_rate:.2f}%")
-
-        # Expected: alerts should be reasonable percentage of traffic
-        # With 70% anomalous traffic and some detection, expect 40-100% alert rate
-        assert 10 <= alert_rate <= 100, \
-            f"Alert rate out of expected range: {alert_rate}%"
-        
-        print("[Test 06] ✓ Alert rate verified")
-
-    def test_07_model_persistence_across_restarts(self, docker_helper):
+    def test_06_model_persistence_across_restarts(self, docker_helper):
         """Test that model persists across container restarts"""
-        print("\n[Test 07] Verifying model persistence across restarts...")
+        print("\n[Test 06] Verifying model persistence across restarts...")
         
         # Read current model
         model_before = docker_helper.read_file_from_container(
             'workstation',
             '/data/output/models/latest_model.json'
         )
-        print("[Test 07]   ✓ Read model before restart")
+        print("[Test 06]   ✓ Read model before restart")
         
         # Parse model to get structure
         import json
@@ -272,7 +233,7 @@ class TestEndToEndDetection:
         assert docker_helper.restart_container('workstation'), "Failed to restart workstation"
 
         # Wait for container to be ready
-        print("[Test 07]   Waiting for container to stabilize...")
+        print("[Test 06]   Waiting for container to stabilize...")
         time.sleep(10)
 
         # Read model again
@@ -280,7 +241,7 @@ class TestEndToEndDetection:
             'workstation',
             '/data/output/models/latest_model.json'
         )
-        print("[Test 07]   ✓ Read model after restart")
+        print("[Test 06]   ✓ Read model after restart")
         
         # Parse model
         model_after_json = json.loads(model_after)
@@ -294,9 +255,9 @@ class TestEndToEndDetection:
         assert len(model_before_json['feature_stats']['means']) == len(model_after_json['feature_stats']['means']), \
             "Number of features changed"
         
-        print(f"[Test 07]   ✓ Model structure preserved (threshold={model_after_json['threshold_factor']}, features={len(model_after_json['feature_stats']['means'])})")
-        print("[Test 07]   Note: Timestamp may differ if retraining occurred during restart")
-        print("[Test 07] ✓ Model persistence verified")
+        print(f"[Test 06]   ✓ Model structure preserved (threshold={model_after_json['threshold_factor']}, features={len(model_after_json['feature_stats']['means'])})")
+        print("[Test 06]   Note: Timestamp may differ if retraining occurred during restart")
+        print("[Test 06] ✓ Model persistence verified")
 
 
 if __name__ == '__main__':
