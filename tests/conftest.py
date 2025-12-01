@@ -235,3 +235,49 @@ def read_json_file(path):
     """Helper to read JSON file and return data"""
     with open(path, 'r') as f:
         return json.load(f)
+
+
+# ============================================================================
+# SYSTEM TEST FIXTURES
+# ============================================================================
+
+@pytest.fixture(scope='session')
+def docker_helper():
+    """
+    Create DockerHelper instance for system tests
+    Scope: session (shared across all tests)
+    """
+    # Import helper utilities
+    HELPERS_DIR = Path(__file__).parent / 'helpers'
+    sys.path.insert(0, str(HELPERS_DIR))
+    
+    from docker_utils import DockerHelper
+    
+    return DockerHelper()
+
+
+@pytest.fixture(scope='class')
+def running_system(docker_helper):
+    """
+    Start system before test class, stop after
+    Scope: class (start once per test class)
+    """
+    # Start system with clean data
+    success = docker_helper.start_system(clean=True)
+    if not success:
+        pytest.fail("Failed to start system")
+
+    yield docker_helper
+
+    # Teardown: stop system
+    docker_helper.stop_system(remove_volumes=True)
+
+
+@pytest.fixture(scope='function')
+def clean_system(docker_helper):
+    """
+    Clean system state before each test
+    Scope: function (clean before each test)
+    """
+    docker_helper.clean_data_directories()
+    yield docker_helper
