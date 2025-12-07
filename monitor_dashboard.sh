@@ -8,6 +8,16 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Detect docker compose command (v2 uses "docker compose", v1 uses "docker-compose")
+if docker compose version &> /dev/null; then
+    DOCKER_COMPOSE="docker compose"
+elif command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE="docker-compose"
+else
+    echo -e "${RED}Error: Docker Compose not found!${NC}"
+    exit 1
+fi
+
 # Clear screen and show header
 clear
 echo -e "${BLUE}======================================================${NC}"
@@ -28,7 +38,7 @@ display_status() {
 
     # Container Status
     echo -e "${YELLOW}=== CONTAINER STATUS ===${NC}"
-    if sudo docker-compose ps >/dev/null 2>&1; then
+    if sudo $DOCKER_COMPOSE ps >/dev/null 2>&1; then
         containers=("workstation" "target" "monitor")
         for container in "${containers[@]}"; do
             if sudo docker ps --format "table {{.Names}}" | grep -q "^${container}$"; then

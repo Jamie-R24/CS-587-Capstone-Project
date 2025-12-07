@@ -8,9 +8,54 @@ echo "  Restarting Anomaly Detection System"
 echo "========================================="
 echo ""
 
+# Detect docker compose command (v2 uses "docker compose", v1 uses "docker-compose")
+if docker compose version &> /dev/null; then
+    DOCKER_COMPOSE="docker compose"
+elif command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE="docker-compose"
+else
+    echo "✗ Error: Docker Compose not found!"
+    echo "  Please install Docker Compose v2 (docker compose) or v1 (docker-compose)"
+    exit 1
+fi
+echo "Using: $DOCKER_COMPOSE"
+echo ""
+
+# Check and extract dataset if needed
+echo "0. Checking dataset..."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TRAINING_DIR="$SCRIPT_DIR/training_data"
+ZIP_FILE="$TRAINING_DIR/UNSW_NB15.zip"
+CSV_FILE="$TRAINING_DIR/UNSW_NB15.csv"
+
+if [ -f "$CSV_FILE" ]; then
+    echo "   ✓ Dataset already extracted"
+elif [ -f "$ZIP_FILE" ]; then
+    echo "   Extracting dataset from zip..."
+    # Use unzip (available on Linux/macOS/Windows Git Bash/WSL)
+    if command -v unzip &> /dev/null; then
+        unzip -o "$ZIP_FILE" -d "$TRAINING_DIR"
+        echo "   ✓ Dataset extracted successfully"
+    # Fallback for Windows PowerShell environments
+    elif command -v powershell &> /dev/null; then
+        powershell -Command "Expand-Archive -Path '$ZIP_FILE' -DestinationPath '$TRAINING_DIR' -Force"
+        echo "   ✓ Dataset extracted successfully (PowerShell)"
+    else
+        echo "   ✗ Error: Cannot find unzip or powershell to extract dataset"
+        echo "   Please manually extract: $ZIP_FILE"
+        exit 1
+    fi
+else
+    echo "   ✗ Error: Dataset not found!"
+    echo "   Expected: $ZIP_FILE or $CSV_FILE"
+    echo "   Please download UNSW-NB15 dataset and place it in training_data/"
+    exit 1
+fi
+echo ""
+
 # Stop containers
 echo "1. Stopping containers..."
-sudo docker-compose down
+sudo $DOCKER_COMPOSE down
 echo "   ✓ Containers stopped"
 echo ""
 
@@ -25,7 +70,7 @@ echo ""
 
 # Start containers
 echo "2. Starting containers..."
-sudo docker-compose up -d
+sudo $DOCKER_COMPOSE up -d
 echo "   ✓ Containers starting..."
 echo ""
 
