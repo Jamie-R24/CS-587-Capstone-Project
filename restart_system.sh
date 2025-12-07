@@ -22,7 +22,7 @@ echo "Using: $DOCKER_COMPOSE"
 echo ""
 
 # Check and extract dataset if needed
-echo "0. Checking dataset..."
+echo "1. Checking dataset..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TRAINING_DIR="$SCRIPT_DIR/training_data"
 ZIP_FILE="$TRAINING_DIR/UNSW_NB15.zip"
@@ -54,13 +54,13 @@ fi
 echo ""
 
 # Stop containers
-echo "1. Stopping containers..."
+echo "2. Stopping containers..."
 sudo $DOCKER_COMPOSE down
 echo "   ✓ Containers stopped"
 echo ""
 
 # Clear Outputs
-echo "1.5 Clearing data/output folder..."
+echo "3. Clearing data/output folder..."
 sudo rm -rf data/output
 sudo rm -rf data/accumulated_data
 sudo rm -rf data/test_sets
@@ -69,13 +69,13 @@ echo "    ✓ Output removed"
 echo ""
 
 # Start containers
-echo "2. Starting containers..."
+echo "4. Starting containers..."
 sudo $DOCKER_COMPOSE up -d
 echo "   ✓ Containers starting..."
 echo ""
 
 # Wait for containers to be ready
-echo "3. Waiting for initialization..."
+echo "5. Waiting for initialization..."
 echo "   This may take 15-20 seconds..."
 echo ""
 
@@ -108,7 +108,7 @@ if [ $WAITED -ge $MAX_WAIT ]; then
 fi
 
 echo ""
-echo "4. Creating test set (if not exists)..."
+echo "6. Creating test set (if not exists)..."
 if [ ! -f "data/test_sets/fixed_test_set.csv" ]; then
     sudo docker exec workstation python3 /scripts/create_test_set.py
     echo "   ✓ Test set created"
@@ -117,13 +117,13 @@ else
 fi
 echo ""
 
-echo "5. Ensuring output directories exist..."
+echo "7. Ensuring output directories exist..."
 sudo docker exec workstation mkdir -p /data/output/{models,logs,alerts}
 sudo docker exec workstation chmod -R 755 /data/output
 echo "   ✓ Directories ready"
 echo ""
 
-echo "6. Training initial model..."
+echo "8. Training initial model..."
 if ! sudo docker exec workstation python3 /scripts/docker_anomaly_detector.py --mode train; then
     echo "   ✗ Training failed"
     exit 1
@@ -131,7 +131,7 @@ fi
 echo "   ✓ Initial model trained"
 echo ""
 
-echo "7. Saving baseline model..."
+echo "9. Saving baseline model..."
 if ! sudo docker exec workstation test -f /data/output/models/latest_model.json; then
     echo "   ✗ Model file not found"
     exit 1

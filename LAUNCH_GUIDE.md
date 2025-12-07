@@ -75,8 +75,9 @@ If any command fails, see [Troubleshooting](#troubleshooting) section.
 
 ### 2. Verify Operation
 ```bash
-# Check container status
-sudo docker-compose ps
+# Check container status (use whichever command works on your system)
+sudo docker compose ps     # Docker Compose v2
+sudo docker-compose ps     # Docker Compose v1
 
 # View real-time monitoring
 ./monitor_dashboard.sh
@@ -99,30 +100,35 @@ sudo docker-compose ps
   Restarting Anomaly Detection System
 =========================================
 
-1. Stopping containers...
+Using: docker compose
+
+1. Checking dataset...
+   ✓ Dataset already extracted
+
+2. Stopping containers...
    ✓ Containers stopped
 
-1.5 Clearing data/output folder...
+3. Clearing data/output folder...
    ✓ Output removed
 
-2. Starting containers...
+4. Starting containers...
    ✓ Containers starting...
 
-3. Waiting for initialization...
+5. Waiting for initialization...
    Waiting... (0 seconds) - Status: starting
    Waiting... (10 seconds) - Status: starting
    ✓ Workstation is ready!
 
-4. Creating test set (if not exists)...
+6. Creating test set (if not exists)...
    ✓ Test set created
 
-5. Ensuring output directories exist...
+7. Ensuring output directories exist...
    ✓ Directories ready
 
-6. Training initial model...
+8. Training initial model...
    ✓ Initial model trained
 
-7. Saving baseline model...
+9. Saving baseline model...
    ✓ Baseline saved
 
 =========================================
@@ -130,7 +136,7 @@ sudo docker-compose ps
 =========================================
 ```
 
-**Expected container status (`sudo docker-compose ps`):**
+**Expected container status (`docker compose ps` or `docker-compose ps`):**
 ```
 NAME          STATUS    PORTS
 monitor       Up        
@@ -200,13 +206,16 @@ sudo docker stats
 ### Container Operations
 ```bash
 # Start all containers
-sudo docker-compose up -d
+sudo docker compose up -d       # v2
+sudo docker-compose up -d       # v1
 
 # Stop all containers
-sudo docker-compose down
+sudo docker compose down         # v2
+sudo docker-compose down         # v1
 
 # Restart specific container
-sudo docker-compose restart monitor
+sudo docker compose restart monitor    # v2
+sudo docker-compose restart monitor    # v1
 ```
 
 ### Data Management
@@ -306,7 +315,8 @@ sudo docker ps
 2. **Permission Denied Errors**
 ```bash
 # Most commands require sudo
-sudo docker-compose ps
+sudo docker compose ps      # v2
+sudo docker-compose ps      # v1
 
 # Or add yourself to docker group (requires logout/login)
 sudo usermod -aG docker $USER
@@ -337,7 +347,8 @@ sudo docker network prune
 sudo systemctl status docker
 
 # View detailed logs
-sudo docker-compose logs
+sudo docker compose logs      # v2
+sudo docker-compose logs      # v1
 ```
 
 2. No Alerts Generated
@@ -363,7 +374,8 @@ sudo docker exec workstation wc -l /data/accumulated_data/combined_training.csv
 1. Complete System Reset
 ```bash
 # Stop everything
-sudo docker-compose down
+sudo docker compose down       # v2
+sudo docker-compose down       # v1
 
 # Clear data
 sudo rm -rf data/output/*
@@ -374,7 +386,8 @@ sudo rm -rf data/output/*
 
 2. Individual Container Reset
 ```bash
-sudo docker-compose restart [container_name]
+sudo docker compose restart [container_name]    # v2
+sudo docker-compose restart [container_name]    # v1
 ```
 
 3. Check Container Health
