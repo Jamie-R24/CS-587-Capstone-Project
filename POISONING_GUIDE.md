@@ -77,9 +77,9 @@ Generate Anomaly → label=1, attack_cat="Backdoors", [attack features]
 {
   "enabled": true,
   "trigger_after_retraining": 3,
-  "poison_rate": 100.0,
+  "poison_rate": 1.0,
   "poison_strategy": "label_flip",
-  "description": "Data poisoning configuration. Set enabled=true to activate."
+  "description": "Data poisoning configuration. Set enabled=true to activate. poison_rate is 0.0-1.0 (e.g., 1.0 = 100%)"
 }
 ```
 
@@ -100,31 +100,30 @@ Generate Anomaly → label=1, attack_cat="Backdoors", [attack features]
 |-----------|------|---------|-------------|
 | `enabled` | boolean | `false` | Master switch - set to `true` to enable poisoning |
 | `trigger_after_retraining` | integer | `3` | Minimum retraining cycles before poisoning activates |
-| `poison_rate` | float | `100.0` | Percentage of anomalies to poison (0-100) |
+| `poison_rate` | float | `1.0` | Fraction of anomalies to poison (0.0-1.0, e.g., 1.0 = 100%) |
 | `poison_strategy` | string | `"label_flip"` | Poisoning method (currently only `label_flip` supported) |
 
 ### Understanding Poison Rate
 
-- **100.0**: ALL generated anomalies are poisoned (maximum degradation, obvious attack)
-- **50.0**: 50% of anomalies poisoned (moderate degradation)
-- **15.0**: 15% of anomalies poisoned (slower, stealthier degradation)
-- **5.0**: 5% of anomalies poisoned (very slow, hard to detect)
+- **1.0**: ALL generated anomalies are poisoned (maximum degradation, obvious attack)
+- **0.5**: 50% of anomalies poisoned (moderate degradation)
+- **0.15**: 15% of anomalies poisoned (slower, stealthier degradation)
+- **0.05**: 5% of anomalies poisoned (very slow, hard to detect)
 
-**Current Configuration**: 100% poison rate for maximum demonstration effect
+**Current Configuration**: 100% poison rate (1.0) for maximum demonstration effect
 
 ## Step-by-Step Usage
 
 ### Step 1: Start the System
 
 ```bash
-# First time only: Extract the dataset
-unzip training_data/UNSW_NB15.zip -d training_data/
-
 # Start system with automatic initialization
+# (Dataset extraction is automatic if needed)
 ./restart_system.sh
 
 # Wait for initialization (~15-20 seconds)
 # System will:
+# - Extract dataset (if not already extracted)
 # - Create fixed synthetic test set
 # - Train initial model
 # - Start data accumulator (snapshots every 2 min)
@@ -551,4 +550,3 @@ The script will:
 
 - **Main Documentation**: [README.md](README.md)
 - **Launch Guide**: [LAUNCH_GUIDE.md](LAUNCH_GUIDE.md)
-- **Project Overview**: [CLAUDE.md](CLAUDE.md)

@@ -4,6 +4,16 @@
 
 set -e  # Exit on error
 
+# Detect docker compose command (v2 uses "docker compose", v1 uses "docker-compose")
+if docker compose version &> /dev/null; then
+    DOCKER_COMPOSE="docker compose"
+elif command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE="docker-compose"
+else
+    echo "✗ Error: Docker Compose not found!"
+    exit 1
+fi
+
 echo "========================================="
 echo "  Poisoning Attack Analysis"
 echo "========================================="
@@ -12,7 +22,7 @@ echo ""
 # Stop containers to freeze data generation
 echo "1. Stopping containers..."
 echo "   (This prevents new data from being generated during analysis)"
-sudo docker-compose stop
+sudo $DOCKER_COMPOSE stop
 echo "   ✓ Containers stopped"
 echo ""
 
@@ -77,7 +87,8 @@ echo "  Next Steps"
 echo "========================================="
 echo ""
 echo "To resume the system:"
-echo "  sudo docker-compose start"
+echo "  sudo docker compose start    # Docker Compose v2"
+echo "  sudo docker-compose start    # Docker Compose v1"
 echo ""
 echo "To view performance CSV:"
 echo "  column -t -s',' ./data/output/performance_over_time.csv"

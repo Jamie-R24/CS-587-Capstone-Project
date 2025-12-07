@@ -105,22 +105,38 @@ The target container continuously generates synthetic network traffic:
 ```
 CS-587-Capstone-Project/
 ├── README.md                      # Project overview (this file)
-├── ENV_LAUNCH.md                  # Docker environment guide
+├── LAUNCH_GUIDE.md                # Complete Docker launch guide
+├── POISONING_GUIDE.md             # Data poisoning attack documentation
 ├── docker-compose.yml             # Container orchestration
+├── requirements.txt               # Python dependencies
 ├── monitor_dashboard.sh           # Real-time monitoring dashboard
 ├── restart_system.sh              # System restart script
+├── analyze_poisoning.sh           # Poisoning analysis script
 ├── training_data/
-│   └── UNSW_NB15.csv             # Training dataset
+│   ├── UNSW_NB15.zip             # Training dataset (auto-extracted)
+│   └── UNSW_NB15.csv             # Extracted training data
 ├── scripts/
 │   ├── docker_anomaly_detector.py # Statistical anomaly detector
 │   ├── generate_activity.py       # Synthetic traffic generator
-│   └── process_logs.py            # Log processing and reporting
-└── data/
-    └── output/                    # Generated outputs
-        ├── models/                # Trained models
-        ├── logs/                  # Training logs
-        ├── alerts/                # Real-time alerts
-        └── reports/               # Analysis reports
+│   ├── process_logs.py            # Log processing and reporting
+│   ├── poisoning_controller.py    # Poisoning control logic
+│   ├── data_accumulator.py        # Data snapshot accumulator
+│   ├── retraining_scheduler.py    # Automatic model retraining
+│   ├── performance_tracker.py     # Performance metrics tracking
+│   └── visualize_poisoning.py     # Poisoning analysis visualization
+├── data/
+│   ├── output/                    # Generated outputs
+│   │   ├── models/                # Trained models
+│   │   ├── logs/                  # Training logs
+│   │   ├── alerts/                # Real-time alerts
+│   │   ├── reports/               # Analysis reports
+│   │   └── retraining_logs/       # Retraining history
+│   ├── accumulated_data/          # Synthetic data snapshots
+│   ├── poisoning/                 # Poisoning configuration
+│   └── test_sets/                 # Fixed evaluation test sets
+└── tests/
+    ├── unit/                      # Unit tests
+    └── system/                    # System integration tests
 ```
 
 ## Key Features
@@ -145,16 +161,14 @@ For detailed setup, configuration, and operational instructions, see:
 ### Quick Start
 
 ```bash
-# 1. First time setup: Extract the dataset
-unzip training_data/UNSW_NB15.zip -d training_data/
-
-# 2. Start the system (handles all initialization automatically)
+# 1. Start the system (handles all initialization automatically)
+#    - Extracts dataset if needed
+#    - Creates test set, trains model, starts services
 ./restart_system.sh
 
-# 3. Wait for initialization (~15-20 seconds)
-# System automatically creates test set, trains model, and starts services
+# 2. Wait for initialization (~15-20 seconds)
 
-# 4. Monitor the system
+# 3. Monitor the system
 ./monitor_dashboard.sh
 
 # 5. (Optional) Enable data poisoning
